@@ -13,6 +13,12 @@ const ROLE_DETAILS = {
         hint: 'Access onboard QR attendance scanner for bus-mounted kiosk display',
         badge: 'Scanner'
     },
+    driver: {
+        name: 'Bus Driver',
+        placeholder: 'driver1@saividya.ac.in',
+        hint: 'Access driver console with live GPS tracking, route map & trip controls',
+        badge: 'Driver'
+    },
     faculty: {
         name: 'Faculty Member',
         placeholder: 'faculty@saividya.ac.in',

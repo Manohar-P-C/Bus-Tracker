@@ -22,6 +22,7 @@ def index():
     active_role = request.args.get('role', 'student')
     ROLE_DEFAULTS = {
         'admin': {'name': 'System Administrator', 'email': 'admin@saividya.ac.in'},
+        'driver': {'name': 'Bus Driver', 'email': 'driver1@saividya.ac.in'},
         'scanner': {'name': 'Bus QR Scanner Kiosk', 'email': 'scanner1@saividya.ac.in'},
         'faculty': {'name': 'Faculty Member', 'email': 'faculty1@saividya.ac.in'},
         'student': {'name': 'Student', 'email': 'student1@saividya.ac.in'},
@@ -102,7 +103,9 @@ def login():
             target_url = url_for('admin_dashboard')
         elif user_role == 'student':
             target_url = url_for('student_dashboard')
-        elif user_role in ['scanner', 'driver']:
+        elif user_role == 'driver':
+            target_url = url_for('driver_dashboard')
+        elif user_role == 'scanner':
             target_url = url_for('bus_qr_kiosk')
         else:
             target_url = url_for('index', role=user_role)
@@ -224,6 +227,61 @@ def send_student_sos():
         'success': True,
         'message': f'Emergency SOS alert dispatched to {emergency_type} & Transport Office!'
     })
+
+# ----------------- DRIVER DASHBOARD (Tesla UI) -----------------
+
+@app.route('/driver')
+@app.route('/driver/dashboard')
+def driver_dashboard():
+    user = session.get('user')
+    if not user or user.get('role') != 'driver':
+        return redirect(url_for('index', role='driver'))
+
+    conn = get_db_connection()
+
+    # Find driver's assigned bus
+    email = user.get('email', '').lower()
+    driver = conn.execute("SELECT * FROM drivers WHERE LOWER(email) = ?", (email,)).fetchone()
+    bus_no = driver['assigned_bus'] if driver else 1
+
+    bus = conn.execute("SELECT * FROM buses WHERE bus_no = ?", (bus_no,)).fetchone()
+    route = conn.execute("SELECT * FROM routes WHERE bus_no = ?", (bus_no,)).fetchone()
+
+    bus_dict = dict(bus) if bus else {
+        'bus_no': bus_no, 'reg_no': f'KA-04-F-200{bus_no}',
+        'driver_name': user.get('name', 'Driver'), 'driver_phone': '9876543210',
+        'route_name': f'Route {bus_no}', 'lat': 13.0985, 'lng': 77.5877,
+        'status': 'On Time'
+    }
+
+    stops_list = []
+    coords_list = []
+    if route:
+        route_dict = dict(route)
+        try:
+            stops_list = json.loads(route_dict.get('stops_json', '[]'))
+        except:
+            stops_list = []
+        # Get coords from seed data map
+        coords_map = {
+            1: [[12.9680, 77.5020], [12.9770, 77.5080], [13.0030, 77.5180], [13.0250, 77.5270], [13.0480, 77.5350], [13.0780, 77.5520], [13.1100, 77.5680], [13.1480, 77.5700]],
+            2: [[12.9610, 77.5130], [12.9750, 77.5350], [12.9920, 77.5480], [13.0150, 77.5540], [13.0330, 77.5640], [13.1480, 77.5700]],
+            3: [[12.9555, 77.5670], [12.9780, 77.5690], [13.0010, 77.5700], [13.0120, 77.5830], [13.0350, 77.5970], [13.0780, 77.6080], [13.1480, 77.5700]],
+            4: [[13.0075, 77.6959], [13.0280, 77.6400], [13.0420, 77.6200], [13.0850, 77.5980], [13.1350, 77.6100], [13.1480, 77.5700]],
+            5: [[13.0380, 77.5750], [13.0520, 77.5780], [13.0750, 77.5680], [13.0850, 77.5620], [13.1100, 77.5680], [13.1480, 77.5700]],
+            6: [[13.0480, 77.5080], [13.0650, 77.5250], [13.0780, 77.5520], [13.0900, 77.5600], [13.1150, 77.5700], [13.1480, 77.5700]],
+            7: [[13.0335, 77.5645], [13.0500, 77.5600], [13.0750, 77.5620], [13.0950, 77.5650], [13.1100, 77.5680], [13.1480, 77.5700]],
+            8: [[13.0975, 77.6080], [13.1000, 77.5960], [13.1150, 77.5850], [13.1300, 77.5780], [13.1400, 77.5720], [13.1480, 77.5700]],
+            9: [[13.2925, 77.5410], [13.2800, 77.5450], [13.2500, 77.5500], [13.2100, 77.5580], [13.1800, 77.5650], [13.1480, 77.5700]]
+        }
+        coords_list = coords_map.get(bus_no, [[bus_dict['lat'], bus_dict['lng']]])
+
+    conn.close()
+
+    return render_template('driver_dashboard.html',
+                           user=user, bus=bus_dict,
+                           route=dict(route) if route else {},
+                           stops=stops_list, coords=coords_list)
 
 # ----------------- BUS ATTENDANCE QR SCANNER KIOSK -----------------
 

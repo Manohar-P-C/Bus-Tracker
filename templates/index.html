@@ -125,6 +125,11 @@
                             <span data-i18n="role_admin">Admin</span>
                         </button>
 
+                        <button type="button" class="role-btn {% if active_role == 'driver' %}active{% endif %}" data-role="driver" onclick="switchRole('driver')">
+                            <i class="bi bi-truck-front-fill"></i>
+                            <span data-i18n="role_driver">Driver</span>
+                        </button>
+
                         <button type="button" class="role-btn {% if active_role == 'scanner' %}active{% endif %}" data-role="scanner" onclick="switchRole('scanner')">
                             <i class="bi bi-qr-code-scan"></i>
                             <span data-i18n="role_scanner">Scanner</span>
