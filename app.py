@@ -378,13 +378,20 @@ def api_scan_attendance():
     """, (student_id, today_str)).fetchone()
 
     if existing:
+        scanned_count = conn.execute("""
+            SELECT COUNT(DISTINCT student_id) FROM attendance 
+            WHERE bus_no = ? AND date = ? AND status = 'Present'
+        """, (target_bus, today_str)).fetchone()[0]
+        total_bus_students = conn.execute("SELECT COUNT(*) FROM students WHERE bus_no = ?", (target_bus,)).fetchone()[0]
         conn.close()
         return jsonify({
             'success': True,
             'already_marked': True,
             'message': f'Student {student_dict["full_name"]} ({student_dict["usn"]}) is already marked Present today!',
             'student': student_dict,
-            'time': time_str
+            'time': time_str,
+            'scanned_count': scanned_count,
+            'total_bus_students': total_bus_students
         })
 
     # Record attendance in database under the target bus (and sync if assigned bus differs)
@@ -761,7 +768,22 @@ def handle_attendance():
         data = request.json
         student_id = data['student_id']
         new_status = data['status']
+        
         conn.execute("UPDATE students SET status = ? WHERE id = ?", (new_status, student_id))
+        
+        # Sync with attendance table for today's log
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        student = conn.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+        
+        if student:
+            bus_no = student['bus_no']
+            if new_status == 'Present':
+                existing_att = conn.execute("SELECT id FROM attendance WHERE student_id = ? AND date = ?", (student_id, today_str)).fetchone()
+                if not existing_att:
+                    conn.execute("INSERT INTO attendance (student_id, bus_no, date, status) VALUES (?, ?, ?, 'Present')", (student_id, bus_no, today_str))
+            else:
+                conn.execute("DELETE FROM attendance WHERE student_id = ? AND date = ?", (student_id, today_str))
+                
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': f'Student status updated to {new_status}'})

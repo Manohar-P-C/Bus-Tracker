@@ -1103,11 +1103,29 @@ body.light-theme .college-pass-box {
 
 .qr-canvas-box {
     background: #ffffff;
-    padding: 6px;
-    border-radius: 8px;
+    padding: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 2px solid #e2e8f0;
+}
+
+#student-pass-qr canvas, #student-pass-qr img {
+    display: block !important;
+    width: 110px !important;
+    height: 110px !important;
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+}
+
+#big-student-qr canvas, #big-student-qr img {
+    display: block !important;
+    width: 220px !important;
+    height: 220px !important;
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
 }
 
 .pass-instruction-text {

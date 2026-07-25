@@ -213,17 +213,15 @@ function initFullMap() {
     L.marker([lat, lng], { icon: busIcon }).addTo(fullMap).bindPopup(`Bus ${STUDENT_DATA.bus_no} Live Position`);
 }
 
-// 2. Dynamic QR Code Generation
+// 2. Dynamic QR Code Generation (High-Resolution & Scannable)
 function generatePassQRCode() {
     const qrContainer = document.getElementById('student-pass-qr');
     const bigQrContainer = document.getElementById('big-student-qr');
 
+    // Clean, high-contrast JSON payload for scanner kiosk
     const qrPayload = JSON.stringify({
         usn: STUDENT_DATA.usn,
-        name: STUDENT_DATA.name,
-        bus_no: STUDENT_DATA.bus_no,
-        valid_till: '2026-06-30',
-        issuer: 'SVIT Transport'
+        bus_no: STUDENT_DATA.bus_no
     });
 
     if (qrContainer) {
@@ -231,15 +229,14 @@ function generatePassQRCode() {
         if (typeof QRCode !== 'undefined') {
             new QRCode(qrContainer, {
                 text: qrPayload,
-                width: 90,
-                height: 90,
+                width: 250,
+                height: 250,
                 colorDark : "#0f172a",
                 colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                correctLevel : QRCode.CorrectLevel.M
             });
         } else {
-            // Fallback Google Chart QR API
-            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
+            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
         }
     }
 
@@ -248,14 +245,14 @@ function generatePassQRCode() {
         if (typeof QRCode !== 'undefined') {
             new QRCode(bigQrContainer, {
                 text: qrPayload,
-                width: 200,
-                height: 200,
+                width: 300,
+                height: 300,
                 colorDark : "#0f172a",
                 colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                correctLevel : QRCode.CorrectLevel.M
             });
         } else {
-            bigQrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
+            bigQrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
         }
     }
 }

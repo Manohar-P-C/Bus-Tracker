@@ -969,6 +969,8 @@
             changeLanguage(savedLang);
 
             startScanner();
+            syncKioskData();
+            setInterval(syncKioskData, 4000);
         });
 
         // Audio Chime Feedback (Web Audio API)
@@ -1086,9 +1088,11 @@
                     } else {
                         playBeepSound('success');
                         showHud(data.student, 'success', 'STUDENT MARKED PRESENT', data.time);
-                        updateKpiCounts(data.scanned_count, data.total_bus_students);
-                        appendTableRow(data.student, data.time);
                     }
+                    if (data.scanned_count !== undefined) {
+                        updateKpiCounts(data.scanned_count, data.total_bus_students);
+                    }
+                    appendTableRow(data.student, data.time);
                 } else {
                     playBeepSound('error');
                     showHud({ full_name: 'Unknown Student', usn: scannedPayload, stop_name: 'N/A' }, 'error', data.message, '');
@@ -1098,6 +1102,24 @@
                 console.error("Scan error:", err);
                 playBeepSound('error');
             });
+        }
+
+        // Real-Time Polling Sync for Scanner Dashboard
+        function syncKioskData() {
+            fetch(`/api/driver/attendance-today?bus_no=${BUS_NO}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateKpiCounts(data.scanned_count, data.total_students);
+                        if (data.scans && Array.isArray(data.scans)) {
+                            // Sync scans in reverse chronological order
+                            data.scans.slice().reverse().forEach(scan => {
+                                appendTableRow(scan, scan.date || 'Today');
+                            });
+                        }
+                    }
+                })
+                .catch(err => console.log('Sync error:', err));
         }
 
         // Show Instant HUD Result Banner
@@ -1138,9 +1160,19 @@
             document.getElementById('boardingPctVal').textContent = `${pct}%`;
         }
 
-        // Append New Row to Recent Scans Activity Table
+        // Append New Row to Recent Scans Activity Table (Prevents duplicates, highlights existing)
         function appendTableRow(student, timeStr) {
             const tbody = document.getElementById('kioskTableBody');
+            if (!tbody || !student || !student.usn) return;
+
+            const existingRow = Array.from(tbody.querySelectorAll('tr')).find(row => {
+                const cell = row.querySelector('td:nth-child(2)');
+                return cell && cell.textContent.trim().toLowerCase() === student.usn.toLowerCase();
+            });
+
+            if (existingRow) {
+                return;
+            }
 
             const emptyRow = document.getElementById('emptyRow');
             if (emptyRow) emptyRow.remove();
@@ -1151,10 +1183,10 @@
             row.innerHTML = `
                 <td>
                     <div class="student-cell">
-                        <div class="avatar-circle">${student.full_name[0].toUpperCase()}</div>
+                        <div class="avatar-circle">${student.full_name ? student.full_name[0].toUpperCase() : '?'}</div>
                         <div>
                             <strong style="color: var(--text-kiosk);">${student.full_name}</strong>
-                            <div style="font-size: 0.78rem; color: var(--muted-kiosk);">${student.email}</div>
+                            <div style="font-size: 0.78rem; color: var(--muted-kiosk);">${student.email || ''}</div>
                         </div>
                     </div>
                 </td>
