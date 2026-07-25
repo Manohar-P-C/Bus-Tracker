@@ -117,6 +117,23 @@ def init_db():
         seed_data(cursor)
         conn.commit()
 
+    # Ensure Scanner Kiosk users (1-9) exist in users table
+    for i in range(1, 10):
+        scanner_email = f"scanner{i}@saividya.ac.in"
+        cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (scanner_email,))
+        if not cursor.fetchone():
+            cursor.execute("""
+                INSERT INTO users (full_name, email, role, phone, password)
+                VALUES (?, ?, 'scanner', '080-28468191', 'scanner123')
+            """, (f"Bus {i} QR Scanner Kiosk", scanner_email))
+
+    # Ensure Arjun Bhat is mapped to Bus 9
+    cursor.execute("SELECT id FROM students WHERE LOWER(email) = 'arjun@saividya.ac.in' OR usn = '1VA21CS010'")
+    arjun_std = cursor.fetchone()
+    if arjun_std:
+        cursor.execute("UPDATE students SET bus_no = 9, usn = '1VA21CS010' WHERE id = ?", (arjun_std[0],))
+
+    conn.commit()
     conn.close()
 
 def seed_data(cursor):

@@ -232,27 +232,41 @@ def send_student_sos():
 def bus_qr_kiosk():
     conn = get_db_connection()
     
-    user = session.get('user', {
-        'id': 1,
-        'name': 'Bus 1 Scanner Kiosk',
-        'email': 'scanner1@saividya.ac.in',
-        'role': 'scanner',
-        'title': 'Bus Attendance Kiosk System'
-    })
-    session['user'] = user
+    req_bus = request.args.get('bus_no') or request.args.get('bus')
+    user = session.get('user')
     
-    bus_no = 1
-    if user and 'email' in user:
-        email = user['email'].lower()
-        if 'scanner' in email:
-            import re
-            digits = re.findall(r'\d+', email)
-            if digits:
-                bus_no = int(digits[0])
-        elif 'driver' in email:
-            driver = conn.execute("SELECT * FROM drivers WHERE LOWER(email) = ?", (email,)).fetchone()
-            if driver and driver['assigned_bus']:
-                bus_no = driver['assigned_bus']
+    if req_bus and req_bus.isdigit():
+        bus_no = int(req_bus)
+        user = {
+            'id': bus_no,
+            'name': f'Bus {bus_no} Scanner Kiosk',
+            'email': f'scanner{bus_no}@saividya.ac.in',
+            'role': 'scanner',
+            'title': 'Bus Attendance Kiosk System'
+        }
+        session['user'] = user
+    else:
+        bus_no = 1
+        if user and 'email' in user:
+            email = user['email'].lower()
+            if 'scanner' in email:
+                import re
+                digits = re.findall(r'\d+', email)
+                if digits:
+                    bus_no = int(digits[0])
+            elif 'driver' in email:
+                driver = conn.execute("SELECT * FROM drivers WHERE LOWER(email) = ?", (email,)).fetchone()
+                if driver and driver['assigned_bus']:
+                    bus_no = driver['assigned_bus']
+        else:
+            user = {
+                'id': 1,
+                'name': 'Bus 1 Scanner Kiosk',
+                'email': 'scanner1@saividya.ac.in',
+                'role': 'scanner',
+                'title': 'Bus Attendance Kiosk System'
+            }
+            session['user'] = user
     
     bus = conn.execute("SELECT * FROM buses WHERE bus_no = ?", (bus_no,)).fetchone()
     route = conn.execute("SELECT * FROM routes WHERE bus_no = ?", (bus_no,)).fetchone()
@@ -292,18 +306,30 @@ def bus_qr_kiosk():
 def api_scan_attendance():
     data = request.get_json() or {}
     scanned_payload = data.get('usn', '').strip()
-    bus_no = data.get('bus_no')
+    raw_bus_no = data.get('bus_no')
     
     user = session.get('user', {})
-    if not bus_no and user and user.get('role') == 'driver':
-        conn = get_db_connection()
-        driver = conn.execute("SELECT assigned_bus FROM drivers WHERE LOWER(email) = ?", (user['email'].lower(),)).fetchone()
-        if driver:
-            bus_no = driver['assigned_bus']
-        conn.close()
+    bus_no = None
+    if raw_bus_no is not None:
+        try:
+            bus_no = int(raw_bus_no)
+        except (ValueError, TypeError):
+            bus_no = None
 
-    if not bus_no:
-        bus_no = 1
+    if not bus_no and user:
+        role = user.get('role')
+        if role == 'scanner':
+            email = user.get('email', '').lower()
+            import re
+            digits = re.findall(r'\d+', email)
+            if digits:
+                bus_no = int(digits[0])
+        elif role == 'driver':
+            conn = get_db_connection()
+            driver = conn.execute("SELECT assigned_bus FROM drivers WHERE LOWER(email) = ?", (user.get('email', '').lower(),)).fetchone()
+            if driver and driver['assigned_bus']:
+                bus_no = driver['assigned_bus']
+            conn.close()
 
     if not scanned_payload:
         return jsonify({'success': False, 'message': 'No QR payload or USN provided.'}), 400
@@ -312,11 +338,15 @@ def api_scan_attendance():
 
     # Support full JSON payload parsing from QR pass
     search_target = scanned_payload
+    payload_bus_no = None
     if scanned_payload.startswith('{') and scanned_payload.endswith('}'):
         try:
             parsed = json.loads(scanned_payload)
-            if isinstance(parsed, dict) and 'usn' in parsed and parsed['usn']:
-                search_target = str(parsed['usn']).strip()
+            if isinstance(parsed, dict):
+                if 'usn' in parsed and parsed['usn']:
+                    search_target = str(parsed['usn']).strip()
+                if 'bus_no' in parsed and parsed['bus_no']:
+                    payload_bus_no = int(parsed['bus_no'])
         except Exception:
             pass
 
@@ -333,6 +363,11 @@ def api_scan_attendance():
 
     student_dict = dict(student)
     student_id = student_dict['id']
+    student_assigned_bus = student_dict.get('bus_no', 9)
+
+    # Determine final bus_no for attendance record
+    target_bus = bus_no if bus_no else (payload_bus_no if payload_bus_no else student_assigned_bus)
+
     today_str = datetime.now().strftime('%Y-%m-%d')
     time_str = datetime.now().strftime('%I:%M:%S %p')
 
@@ -352,11 +387,17 @@ def api_scan_attendance():
             'time': time_str
         })
 
-    # Record attendance in database
+    # Record attendance in database under the target bus (and sync if assigned bus differs)
     conn.execute("""
         INSERT INTO attendance (student_id, bus_no, date, status)
         VALUES (?, ?, ?, 'Present')
-    """, (student_id, bus_no, today_str))
+    """, (student_id, target_bus, today_str))
+
+    if student_assigned_bus != target_bus:
+        conn.execute("""
+            INSERT INTO attendance (student_id, bus_no, date, status)
+            VALUES (?, ?, ?, 'Present')
+        """, (student_id, student_assigned_bus, today_str))
 
     # Update student status to 'Present'
     conn.execute("UPDATE students SET status = 'Present' WHERE id = ?", (student_id,))
@@ -368,22 +409,26 @@ def api_scan_attendance():
 
     conn.commit()
 
-    # Get updated scanned count for this bus
+    # Get updated scanned count for target bus
     scanned_count = conn.execute("""
         SELECT COUNT(DISTINCT student_id) FROM attendance 
         WHERE bus_no = ? AND date = ? AND status = 'Present'
-    """, (bus_no, today_str)).fetchone()[0]
+    """, (target_bus, today_str)).fetchone()[0]
 
-    total_bus_students = conn.execute("SELECT COUNT(*) FROM students WHERE bus_no = ?", (bus_no,)).fetchone()[0]
+    total_bus_students = conn.execute("SELECT COUNT(*) FROM students WHERE bus_no = ?", (target_bus,)).fetchone()[0]
 
     conn.close()
 
     student_dict['attendance_pct'] = updated_pct
 
+    msg = f'Successfully marked {student_dict["full_name"]} PRESENT on Bus {target_bus}!'
+    if student_assigned_bus != target_bus:
+        msg = f'Successfully marked {student_dict["full_name"]} PRESENT on Bus {target_bus}! (Registered: Bus {student_assigned_bus})'
+
     return jsonify({
         'success': True,
         'already_marked': False,
-        'message': f'Successfully marked {student_dict["full_name"]} PRESENT!',
+        'message': msg,
         'student': student_dict,
         'time': time_str,
         'scanned_count': scanned_count,
