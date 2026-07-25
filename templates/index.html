@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sai Vidya Institute Of Technology - College Bus Tracking System</title>
+    <meta name="description" content="Cloud based smart transport management system for Sai Vidya Institute of Technology students, parents, drivers, faculty, and admin.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+        <div class="globe globe-3"></div>
+    </div>
+
+    <main class="page-container">
+        <!-- Left Column: Branding & Features -->
+        <section class="left-section">
+            <!-- College Header Info Card -->
+            <div class="brand-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.2rem;">
+                    <h1 class="college-title" data-i18n="college_title" style="margin-bottom: 0;">Sai Vidya Institute Of Technology</h1>
+                    
+                    <!-- Multi-Language Selector -->
+                    <div class="language-selector-wrapper">
+                        <i class="bi bi-translate lang-icon"></i>
+                        <select id="language-selector-dropdown" class="lang-dropdown-select" onchange="changeLanguage(this.value)" aria-label="Select Language">
+                            <option value="en">🇬🇧 English</option>
+                            <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+                            <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+                            <option value="te">🇮🇳 తెలుగు (Telugu)</option>
+                            <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+                            <option value="ml">🇮🇳 മലയാളം (Malayalam)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="brand-badges-row">
+                    <div class="logo-box logo-svit">
+                        <img src="{{ url_for('static', filename='images/svit_logo.png') }}" alt="SVIT Logo" class="logo-img" id="svit-logo-img">
+                    </div>
+
+                    <div class="accreditation-details">
+                        <p class="accreditation-line" data-i18n="accreditation">Approved by <strong>AICTE, New Delhi</strong>, affiliated to <strong>VTU</strong>, Recognized by <strong>Govt. of Karnataka</strong>.<br>Accredited by <strong>NBA, New Delhi</strong> (CSE, ECE, ISE), <strong>NAAC - "A" Grade</strong></p>
+                    </div>
+
+                    <div class="logo-box logo-naac">
+                        <img src="{{ url_for('static', filename='images/naac_a_logo.png') }}" alt="NAAC A Grade Logo" class="logo-img" id="naac-logo-img">
+                    </div>
+                </div>
+
+                <div class="contact-footer">
+                    <p class="address-text"><strong>Rajanukunte, Bengaluru - 560 119, Karnataka</strong></p>
+                    <p class="contact-text">Phone: 080-28468191/96/97/98 | Email: <a href="mailto:principal@saividya.ac.in">principal@saividya.ac.in</a></p>
+                </div>
+            </div>
+
+            <!-- College Bus Tracking System Card -->
+            <div class="system-card">
+                <div class="system-header">
+                    <h2 class="system-title" data-i18n="system_title">College Bus Tracking System</h2>
+                    <p class="system-subtitle" data-i18n="system_subtitle">Cloud based smart transport management for students, parents, drivers and admin.</p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-item" id="feature-gps" onclick="showFeatureModal('Live GPS Tracking', 'Real-time vehicle position monitoring with instant route updates, speed tracking, and automated stop alerts.')">
+                        <div class="feature-icon-wrapper">
+                            <i class="bi bi-bus-front-fill"></i>
+                        </div>
+                        <span class="feature-label" data-i18n="feat_gps">Live GPS Tracking</span>
+                    </div>
+
+                    <div class="feature-item" id="feature-eta" onclick="showFeatureModal('Route & Stop ETA', 'Smart arrival estimates based on live traffic data, route conditions, and scheduled pickup timings.')">
+                        <div class="feature-icon-wrapper">
+                            <i class="bi bi-bezier2"></i>
+                        </div>
+                        <span class="feature-label" data-i18n="feat_eta">Route & Stop ETA</span>
+                    </div>
+
+                    <div class="feature-item" id="feature-qr" onclick="showFeatureModal('QR Attendance', 'Contactless QR code boarding pass system ensuring instant parent notifications upon boarding and drop-off.')">
+                        <div class="feature-icon-wrapper">
+                            <i class="bi bi-qr-code-scan"></i>
+                        </div>
+                        <span class="feature-label" data-i18n="feat_qr">QR Attendance</span>
+                    </div>
+
+                    <div class="feature-item" id="feature-reports" onclick="showFeatureModal('Printable Reports', 'Comprehensive trip logs, student occupancy counts, driver speed compliance, and monthly route analytics.')">
+                        <div class="feature-icon-wrapper">
+                            <i class="bi bi-file-earmark-text-fill"></i>
+                        </div>
+                        <span class="feature-label" data-i18n="feat_reports">Printable Reports</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Login Portal -->
+        <section class="right-section">
+            <div class="login-card">
+                <div class="login-card-header">
+                    <h2 class="login-title" data-i18n="login_title">Login</h2>
+                    <p class="login-subtext" id="role-subtitle" data-i18n="login_subtext">Select your account type to proceed</p>
+                </div>
+
+                <!-- Alert Notice Banner -->
+                <div class="notice-banner" id="notice-banner">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span id="notice-text">You have been logged out.</span>
+                </div>
+
+                <!-- 5 Login Types Selector Bar -->
+                <div class="login-type-section">
+                    <label class="login-type-label" data-i18n="select_login_type">Select Login Type:</label>
+                    <div class="role-selector-grid">
+                        <button type="button" class="role-btn {% if active_role == 'admin' %}active{% endif %}" data-role="admin" onclick="switchRole('admin')">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            <span data-i18n="role_admin">Admin</span>
+                        </button>
+
+                        <button type="button" class="role-btn {% if active_role == 'scanner' %}active{% endif %}" data-role="scanner" onclick="switchRole('scanner')">
+                            <i class="bi bi-qr-code-scan"></i>
+                            <span data-i18n="role_scanner">Scanner</span>
+                        </button>
+
+                        <button type="button" class="role-btn {% if active_role == 'faculty' %}active{% endif %}" data-role="faculty" onclick="switchRole('faculty')">
+                            <i class="bi bi-person-badge-fill"></i>
+                            <span data-i18n="role_faculty">Faculty</span>
+                        </button>
+
+                        <button type="button" class="role-btn {% if active_role == 'student' %}active{% endif %}" data-role="student" onclick="switchRole('student')">
+                            <i class="bi bi-mortarboard-fill"></i>
+                            <span data-i18n="role_student">Student</span>
+                        </button>
+
+                        <button type="button" class="role-btn {% if active_role == 'parent' %}active{% endif %}" data-role="parent" onclick="switchRole('parent')">
+                            <i class="bi bi-people-fill"></i>
+                            <span data-i18n="role_parent">Parent</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="login-form" onsubmit="handleLoginSubmit(event)">
+                    <input type="hidden" id="selected-role-input" name="role" value="{{ active_role }}">
+
+                    <div class="form-group">
+                        <label for="email-input" class="form-label" id="email-label-text" data-i18n="email_label">Email / Student ID</label>
+                        <div class="input-wrapper">
+                            <i class="bi bi-person-circle input-icon"></i>
+                            <input type="text" id="email-input" name="email" class="form-control" placeholder="Enter student name or email (e.g. arjun)" required autocomplete="username">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password-input" class="form-label" data-i18n="password_label">Password</label>
+                        <div class="input-wrapper">
+                            <i class="bi bi-lock-fill input-icon"></i>
+                            <input type="password" id="password-input" name="password" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+                            <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility()" title="Toggle password visibility">
+                                <i class="bi bi-eye-slash-fill" id="eye-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        <span class="btn-text" id="submit-btn-text" data-i18n="login_btn">Login</span>
+                        <i class="bi bi-arrow-right-short btn-arrow"></i>
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="#" class="forgot-link" onclick="handleForgotPassword(event)" data-i18n="forgot_password">Forgot password?</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Interactive Feature Information Modal -->
+    <div class="modal-overlay" id="feature-modal" onclick="closeFeatureModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close-btn" onclick="closeFeatureModal()">&times;</button>
+            <div class="modal-icon-badge" id="modal-icon-badge">
+                <i class="bi bi-info-circle-fill"></i>
+            </div>
+            <h3 class="modal-title" id="modal-title">Feature Overview</h3>
+            <p class="modal-description" id="modal-description">Description text here...</p>
+            <button class="modal-action-btn" onclick="closeFeatureModal()">Close Preview</button>
+        </div>
+    </div>
+
+    <!-- Translations & Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

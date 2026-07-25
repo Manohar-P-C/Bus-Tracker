@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - SVIT Smart Transport System</title>
+
+    <!-- Google Fonts & Bootstrap Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- QRCode Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+
+    <!-- Inline Theme Load Script -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('svit_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div class="student-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="student-sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-badge">
+                    <i class="bi bi-bus-front-fill brand-icon"></i>
+                    <div>
+                        <span class="brand-title">SVIT BUS TRACKER</span>
+                        <span class="brand-subtitle" data-i18n="student_portal">Student Portal</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Student Profile Pill -->
+            <div class="sidebar-student-card">
+                <div class="sidebar-avatar">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="sidebar-student-info">
+                    <span class="s-name" id="sb-student-name">{{ student.full_name }}</span>
+                    <span class="s-usn" id="sb-student-usn">USN: {{ student.usn }}</span>
+                    <span class="s-bus-badge">Bus {{ student.bus_no }} &bull; {{ student.stop_name }}</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="sidebar-menu">
+                <div class="menu-label" data-i18n="main_nav">NAVIGATION</div>
+                <button class="nav-item active" data-tab="tab-dashboard" onclick="switchStudentTab('tab-dashboard')">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span data-i18n="nav_dashboard">Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="tab-map" onclick="switchStudentTab('tab-map')">
+                    <i class="bi bi-map-fill"></i>
+                    <span data-i18n="map_view">Map View</span>
+                    <span class="badge-pill bg-blue">Live</span>
+                </button>
+                <button class="nav-item" data-tab="tab-pass" onclick="switchStudentTab('tab-pass')">
+                    <i class="bi bi-qr-code"></i>
+                    <span data-i18n="bus_pass_qr">Bus Pass (QR)</span>
+                </button>
+                <button class="nav-item" data-tab="tab-attendance" onclick="switchStudentTab('tab-attendance')">
+                    <i class="bi bi-calendar-check-fill"></i>
+                    <span data-i18n="nav_attendance">Attendance</span>
+                    <span class="badge-pill bg-green">{{ student.attendance_pct }}%</span>
+                </button>
+                <button class="nav-item" data-tab="tab-sos" onclick="switchStudentTab('tab-sos')">
+                    <i class="bi bi-shield-fill-exclamation"></i>
+                    <span data-i18n="nav_sos">SOS Emergency</span>
+                    <span class="badge-pill bg-red pulse-badge">Alert</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Container -->
+        <main class="student-main">
+            <!-- Topbar Header -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="page-title-block">
+                        <span class="page-category" data-i18n="student_portal">SVIT STUDENT PORTAL</span>
+                        <h1 class="page-header-title" id="page-title" data-i18n="student_dashboard">Student Dashboard</h1>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Multi-Language Selector Dropdown -->
+                    <div class="language-selector-wrapper">
+                        <i class="bi bi-globe2 lang-icon"></i>
+                        <select id="language-selector-dropdown" class="lang-dropdown-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="kn">ಕನ್ನಡ</option>
+                            <option value="hi">हिन्दी</option>
+                            <option value="te">తెలుగు</option>
+                            <option value="ta">தமிழ்</option>
+                            <option value="ml">മലയാളം</option>
+                        </select>
+                    </div>
+
+                    <!-- Day / Night Theme Toggle -->
+                    <button class="topbar-icon-btn theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Day/Night Mode">
+                        <i class="bi bi-sun-fill" id="theme-icon"></i>
+                    </button>
+
+                    <!-- SOS Bell -->
+                    <button class="topbar-icon-btn" onclick="switchStudentTab('tab-sos')" title="Emergency Alerts">
+                        <i class="bi bi-bell-fill"></i>
+                        <span class="notification-dot">1</span>
+                    </button>
+
+                    <div class="topbar-divider"></div>
+
+                    <!-- Student Account Badge Dropdown -->
+                    <div class="account-dropdown-wrapper">
+                        <button class="account-btn" onclick="toggleAccountDropdown()">
+                            <div class="account-avatar">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div class="account-info-text">
+                                <span class="account-name">{{ student.full_name }}</span>
+                                <span class="account-role">Student &bull; {{ student.usn }}</span>
+                            </div>
+                            <i class="bi bi-chevron-down account-arrow"></i>
+                        </button>
+
+                        <div class="account-menu" id="account-dropdown-menu">
+                            <div class="menu-header-info">
+                                <strong>{{ student.full_name }}</strong>
+                                <small>{{ student.email }}</small>
+                            </div>
+                            <hr>
+                            <button class="dropdown-item" onclick="switchStudentTab('tab-pass')">
+                                <i class="bi bi-qr-code-scan"></i> <span data-i18n="digital_bus_pass">My Digital Bus Pass</span>
+                            </button>
+                            <button class="dropdown-item" onclick="switchStudentTab('tab-attendance')">
+                                <i class="bi bi-graph-up-arrow"></i> <span data-i18n="attendance_history">Attendance Records</span>
+                            </button>
+                            <hr>
+                            <a href="{{ url_for('logout') }}" class="dropdown-item logout-link">
+                                <i class="bi bi-box-arrow-right"></i> <span data-i18n="nav_logout">Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Container -->
+            <div class="content-body">
+                <!-- TAB 1: MAIN DASHBOARD -->
+                <div class="tab-panel active" id="tab-dashboard">
+                    <!-- Top Summary KPI Stat Cards Bar -->
+                    <div class="kpi-summary-row">
+                        <div class="kpi-card blue-glow">
+                            <div class="kpi-icon-box bg-blue-soft">
+                                <i class="bi bi-bus-front-fill"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label" data-i18n="assigned_bus">Assigned Bus</span>
+                                <div class="kpi-val-group">
+                                    <h3 class="kpi-value">Bus {{ student.bus_no }}</h3>
+                                    <span class="badge-status status-active pulse-badge"><i class="bi bi-broadcast"></i> En Route</span>
+                                </div>
+                                <span class="kpi-subtext"><i class="bi bi-person-badge"></i> Driver: {{ bus.driver_name if bus and bus.driver_name else 'Mr. Ramesha' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card green-glow">
+                            <div class="kpi-icon-box bg-green-soft">
+                                <i class="bi bi-geo-alt-fill"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label" data-i18n="next_boarding_stop">Next Boarding Stop</span>
+                                <div class="kpi-val-group">
+                                    <h3 class="kpi-value">{{ student.stop_name }}</h3>
+                                    <span class="badge-status status-active">6 min away</span>
+                                </div>
+                                <span class="kpi-subtext"><i class="bi bi-clock-history"></i> Scheduled: 6:52 AM</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card purple-glow">
+                            <div class="kpi-icon-box bg-purple-soft">
+                                <i class="bi bi-calendar-check-fill"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label" data-i18n="monthly_attendance">Monthly Attendance</span>
+                                <div class="kpi-val-group">
+                                    <h3 class="kpi-value">{{ student.attendance_pct }}%</h3>
+                                    <span class="badge-status status-active">18 / 24 Days</span>
+                                </div>
+                                <span class="kpi-subtext"><i class="bi bi-shield-check"></i> Status: Regular Rider</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card amber-glow">
+                            <div class="kpi-icon-box bg-amber-soft">
+                                <i class="bi bi-qr-code-scan"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label" data-i18n="digital_bus_pass">Digital Bus Pass</span>
+                                <div class="kpi-val-group">
+                                    <h3 class="kpi-value">VERIFIED</h3>
+                                    <span class="badge-status status-active">Pass #{{ student.bus_no }}092</span>
+                                </div>
+                                <span class="kpi-subtext"><i class="bi bi-check-circle-fill"></i> Valid till 30-06-2026</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Section: Map View + Student Details Card -->
+                    <div class="grid-top-row">
+                        <!-- 1) MAP VIEW — Live Bus Tracking Card -->
+                        <div class="panel-card map-card">
+                            <div class="panel-header">
+                                <div class="header-title-group">
+                                    <i class="bi bi-geo-alt-fill text-blue"></i>
+                                    <h2>1) <span data-i18n="live_bus_tracking">MAP VIEW — Live Bus Tracking</span></h2>
+                                </div>
+                                <div class="map-view-controls">
+                                    <button class="btn-map-mode active" id="btn-normal-view" onclick="setMapTile('normal')" data-i18n="normal_view">Normal View</button>
+                                    <button class="btn-map-mode" id="btn-satellite-view" onclick="setMapTile('satellite')" data-i18n="satellite_view">Satellite View</button>
+                                    <button class="btn-map-mode" id="btn-traffic-view" onclick="toggleTrafficOverlay()" data-i18n="traffic">Traffic</button>
+                                    <button class="btn-icon-sm" onclick="recenterMap()" title="Recenter Bus Map"><i class="bi bi-arrows-fullscreen"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="map-wrapper-student">
+                                <div id="student-live-map" class="student-map-container"></div>
+                                
+                                <!-- Floating Bus Telemetry Card (Matching Sketch) -->
+                                <div class="bus-telemetry-overlay">
+                                    <div class="telemetry-header">
+                                        <span class="telemetry-bus-tag">Bus {{ student.bus_no }}</span>
+                                        <span class="telemetry-status-badge green">On Route</span>
+                                    </div>
+                                    <div class="telemetry-details">
+                                        <div class="t-row">
+                                            <span class="t-label">Speed:</span>
+                                            <span class="t-val" id="tele-speed">32 km/h</span>
+                                        </div>
+                                        <div class="t-row">
+                                            <span class="t-label">Next Stop:</span>
+                                            <span class="t-val" id="tele-next-stop">{{ student.stop_name }}</span>
+                                        </div>
+                                        <div class="t-row">
+                                            <span class="t-label">ETA:</span>
+                                            <span class="t-val" id="tele-eta">6 mins</span>
+                                        </div>
+                                        <div class="t-row">
+                                            <span class="t-label">Traffic:</span>
+                                            <span class="t-val green-text"><i class="bi bi-bar-chart-fill"></i> Low Traffic</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Route Progress Timeline Bar -->
+                            <div class="route-progress-panel">
+                                <span class="r-prog-title"><i class="bi bi-signpost-fill text-blue"></i> Route Progress (Route {{ student.bus_no }})</span>
+                                <div class="timeline-stops-container">
+                                    <div class="stop-step completed">
+                                        <div class="step-dot"><i class="bi bi-check"></i></div>
+                                        <span class="step-name">Mallathahalli</span>
+                                        <span class="step-time">6:30 AM</span>
+                                    </div>
+                                    <div class="step-line completed"></div>
+                                    <div class="stop-step completed">
+                                        <div class="step-dot"><i class="bi bi-check"></i></div>
+                                        <span class="step-name">Nagarbhavi</span>
+                                        <span class="step-time">6:40 AM</span>
+                                    </div>
+                                    <div class="step-line active-line"></div>
+                                    <div class="stop-step active-step">
+                                        <div class="step-dot pulse-blue"><i class="bi bi-bus-front-fill"></i></div>
+                                        <span class="step-name">{{ student.stop_name }}</span>
+                                        <span class="step-time">6:52 AM</span>
+                                    </div>
+                                    <div class="step-line"></div>
+                                    <div class="stop-step">
+                                        <div class="step-dot"></div>
+                                        <span class="step-name">Yelahanka</span>
+                                        <span class="step-time">7:25 AM</span>
+                                    </div>
+                                    <div class="step-line"></div>
+                                    <div class="stop-step">
+                                        <div class="step-dot target"><i class="bi bi-flag-fill"></i></div>
+                                        <span class="step-name">SVIT Campus</span>
+                                        <span class="step-time">7:45 AM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STUDENT DETAILS Card (Matching Sketch Top Right) -->
+                        <div class="panel-card student-details-card">
+                            <div class="panel-header">
+                                <h3 data-i18n="student_details">STUDENT DETAILS & DRIVER CONTACT</h3>
+                            </div>
+                            <div class="student-profile-body">
+                                <div class="avatar-large-container">
+                                    <div class="avatar-circle-lg">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <h4 class="student-display-name">{{ student.full_name }}</h4>
+                                    <span class="student-usn-badge">{{ student.usn }}</span>
+                                </div>
+
+                                <div class="details-list">
+                                    <div class="detail-item">
+                                        <span class="lbl"><i class="bi bi-person-vcard-fill"></i> <span data-i18n="th_name">Name</span> :</span>
+                                        <span class="val">{{ student.full_name }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="lbl"><i class="bi bi-award-fill"></i> <span data-i18n="th_usn">USN</span> :</span>
+                                        <span class="val">{{ student.usn }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="lbl"><i class="bi bi-envelope-fill"></i> <span data-i18n="th_email">Email</span> :</span>
+                                        <span class="val">{{ student.email }}</span>
+                                    </div>
+                                    <div class="detail-item highlight">
+                                        <span class="lbl"><i class="bi bi-bus-front-fill"></i> <span data-i18n="th_bus_no">Bus No</span> :</span>
+                                        <span class="val text-blue">Bus {{ student.bus_no }} (KA-04-F-910{{ student.bus_no }})</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="lbl"><i class="bi bi-signpost-split-fill"></i> <span data-i18n="th_route">Route</span> :</span>
+                                        <span class="val">{{ student.route_name }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="lbl"><i class="bi bi-geo-fill"></i> <span data-i18n="next_boarding_stop">Boarding Stop</span> :</span>
+                                        <span class="val">{{ student.stop_name }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Driver Direct Contact Box -->
+                                <div class="driver-contact-box">
+                                    <div class="d-header">
+                                        <div class="d-avatar"><i class="bi bi-person-badge-fill"></i></div>
+                                        <div class="d-info">
+                                            <span class="d-label" data-i18n="bus_driver">Bus Driver</span>
+                                            <strong class="d-name">{{ bus.driver_name if bus and bus.driver_name else 'Mr. Ramesha M' }}</strong>
+                                            <span class="d-phone"><i class="bi bi-telephone-fill"></i> +91 {{ bus.driver_phone if bus and bus.driver_phone else '98801 12345' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-actions-row">
+                                        <a href="tel:{{ bus.driver_phone if bus and bus.driver_phone else '9880112345' }}" class="btn-d-action call-btn">
+                                            <i class="bi bi-telephone-outbound-fill"></i> <span data-i18n="call_driver">Call Driver</span>
+                                        </a>
+                                        <button class="btn-d-action share-btn" onclick="shareLiveBusLocation()">
+                                            <i class="bi bi-share-fill"></i> <span data-i18n="share_location">Share Location</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Grid Row (3 Cards: Bus Pass QR, Attendance Checker, SOS Emergency) -->
+                    <div class="grid-bottom-row">
+                        <!-- 2) STUDENT BUS PASS (QR) Card (Matching Sketch) -->
+                        <div class="panel-card pass-card">
+                            <div class="panel-header">
+                                <h3>2) <span data-i18n="bus_pass_qr">STUDENT BUS PASS (QR)</span></h3>
+                            </div>
+                            <div class="pass-card-content">
+                                <div class="college-pass-box">
+                                    <div class="pass-college-header">
+                                        <span class="c-title" data-i18n="college_title">SAI VIDYA INSTITUTE OF TECHNOLOGY</span>
+                                        <span class="c-subtitle">OFFICIAL TRANSPORT BUS PASS</span>
+                                    </div>
+                                    <div class="pass-main-grid">
+                                        <div class="pass-info-left">
+                                            <strong class="p-name">{{ student.full_name }}</strong>
+                                            <span class="p-usn">USN : {{ student.usn }}</span>
+                                            <span class="p-bus">Bus No : <strong>Bus {{ student.bus_no }}</strong></span>
+                                            <span class="p-route">Route : {{ student.route_name }}</span>
+                                            <span class="p-valid">Valid Till : <strong>30-06-2026</strong></span>
+                                        </div>
+                                        <div class="pass-qr-right">
+                                            <div id="student-pass-qr" class="qr-canvas-box"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="pass-instruction-text">
+                                    <i class="bi bi-qr-code-scan"></i> Show this QR code to driver scanner for attendance
+                                </p>
+                                <button class="btn-action-full" onclick="downloadDigitalPass()">
+                                    <i class="bi bi-download"></i> <span data-i18n="download_pass">Download Pass PDF</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 3) ATTENDANCE CHECKER Card (Matching Sketch) -->
+                        <div class="panel-card attendance-card">
+                            <div class="panel-header">
+                                <h3>3) <span data-i18n="attendance_checker">ATTENDANCE CHECKER</span></h3>
+                                <select class="form-select-sm" onchange="filterAttendance(this.value)">
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                            <div class="attendance-body">
+                                <div class="attendance-summary-row">
+                                    <!-- Donut Gauge Chart -->
+                                    <div class="gauge-box">
+                                        <div class="donut-chart-circle">
+                                            <span class="donut-value">{{ student.attendance_pct }}%</span>
+                                            <span class="donut-label">Present</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="summary-stats-list">
+                                        <div class="s-stat"><span class="dot green"></span> Present Days : <strong>18</strong></div>
+                                        <div class="s-stat"><span class="dot red"></span> Absent Days : <strong>5</strong></div>
+                                        <div class="s-stat"><span class="dot yellow"></span> Late Days : <strong>1</strong></div>
+                                        <div class="s-stat"><span class="dot blue"></span> Total Days : <strong>24</strong></div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive-sm">
+                                    <h4 class="section-subheading" data-i18n="attendance_history">Attendance History</h4>
+                                    <table class="admin-table mini-table">
+                                        <thead>
+                                            <tr>
+                                                <th data-i18n="th_date">Date</th>
+                                                <th data-i18n="th_day">Day</th>
+                                                <th data-i18n="th_status">Status</th>
+                                                <th data-i18n="th_stop_point">Boarding Stop</th>
+                                                <th data-i18n="th_drop">Dropping Stop</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for att in attendance %}
+                                            <tr>
+                                                <td>{{ att.date }}</td>
+                                                <td>{{ att.day if att.day else 'Wed' }}</td>
+                                                <td>
+                                                    <span class="badge-status {% if att.status == 'Present' %}status-active{% else %}status-inactive{% endif %}">
+                                                        {{ att.status }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ att.boarding_stop if att.boarding_stop else student.stop_name }}</td>
+                                                <td>{{ att.dropping_stop if att.dropping_stop else 'SVIT Campus' }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4) SOS EMERGENCY Card (Matching Sketch) -->
+                        <div class="panel-card sos-card">
+                            <div class="panel-header">
+                                <h3 class="text-red"><i class="bi bi-exclamation-triangle-fill"></i> 4) <span data-i18n="sos_emergency">SOS EMERGENCY</span></h3>
+                            </div>
+                            <div class="sos-card-content">
+                                <label class="sos-label" data-i18n="select_emergency">Select Emergency Type:</label>
+                                <div class="sos-options-list">
+                                    <label class="sos-radio-item">
+                                        <input type="radio" name="sos_type" value="Police" checked>
+                                        <span class="radio-custom"></span>
+                                        <i class="bi bi-shield-shaded text-blue"></i>
+                                        <span>Police (100)</span>
+                                    </label>
+                                    <label class="sos-radio-item">
+                                        <input type="radio" name="sos_type" value="Ambulance">
+                                        <span class="radio-custom"></span>
+                                        <i class="bi bi-heart-pulse-fill text-red"></i>
+                                        <span>Ambulance (108)</span>
+                                    </label>
+                                    <label class="sos-radio-item">
+                                        <input type="radio" name="sos_type" value="Fire Station">
+                                        <span class="radio-custom"></span>
+                                        <i class="bi bi-fire text-orange"></i>
+                                        <span>Fire Station (101)</span>
+                                    </label>
+                                    <label class="sos-radio-item">
+                                        <input type="radio" name="sos_type" value="Admin">
+                                        <span class="radio-custom"></span>
+                                        <i class="bi bi-building-fill text-purple"></i>
+                                        <span>Admin (Transport Office)</span>
+                                    </label>
+                                </div>
+
+                                <button class="btn-send-sos-big" onclick="sendStudentSOSAlert()">
+                                    <i class="bi bi-shield-lock-fill"></i> <span data-i18n="send_sos">SEND SOS ALERT</span>
+                                </button>
+
+                                <p class="sos-note-text">
+                                    <i class="bi bi-info-circle-fill"></i> Note: Your location will be sent automatically to admin and respective emergency department.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: FULL MAP VIEW -->
+                <div class="tab-panel" id="tab-map">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h2>Full Route Live Map — Bus {{ student.bus_no }}</h2>
+                        </div>
+                        <div style="height: 550px;" id="full-student-map"></div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: BUS PASS TAB -->
+                <div class="tab-panel" id="tab-pass">
+                    <div class="panel-card max-w-600 center-margin">
+                        <div class="panel-header">
+                            <h2>Digital Bus Pass QR</h2>
+                        </div>
+                        <div id="full-pass-container" style="text-align: center; padding: 2rem;">
+                            <!-- Full size QR -->
+                            <div id="big-student-qr" style="display: flex; justify-content: center; margin: 1.5rem 0;"></div>
+                            <h3>{{ student.full_name }}</h3>
+                            <p class="text-muted">USN: {{ student.usn }} | Bus {{ student.bus_no }} ({{ student.route_name }})</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: ATTENDANCE TAB -->
+                <div class="tab-panel" id="tab-attendance">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h2>Full Attendance Records</h2>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Day</th>
+                                    <th>Status</th>
+                                    <th>Boarding Stop</th>
+                                    <th>Dropping Stop</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for att in attendance %}
+                                <tr>
+                                    <td>{{ att.date }}</td>
+                                    <td>{{ att.day if att.day else 'Wed' }}</td>
+                                    <td>
+                                        <span class="badge-status {% if att.status == 'Present' %}status-active{% else %}status-inactive{% endif %}">
+                                            {{ att.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ att.boarding_stop if att.boarding_stop else student.stop_name }}</td>
+                                    <td>{{ att.dropping_stop if att.dropping_stop else 'SVIT Campus' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 5: SOS TAB -->
+                <div class="tab-panel" id="tab-sos">
+                    <div class="panel-card max-w-600 center-margin">
+                        <div class="panel-header">
+                            <h2 class="text-red">Emergency Alert Center</h2>
+                        </div>
+                        <div class="sos-card-content" style="padding: 1.5rem;">
+                            <p>Pressing the button below will immediately dispatch your GPS location to the SVIT Admin Dashboard and selected emergency dispatch team.</p>
+                            <button class="btn-send-sos-big" onclick="sendStudentSOSAlert()">
+                                <i class="bi bi-shield-fill-exclamation"></i> DISPATCH SOS EMERGENCY NOW
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Pass Data as JSON variables for JS -->
+    <script>
+        const STUDENT_DATA = JSON.parse('{{ { "id": student.id, "name": student.full_name, "usn": student.usn, "email": student.email, "bus_no": student.bus_no, "route_name": student.route_name, "stop_name": student.stop_name } | tojson | safe }}');
+        const BUS_DATA = JSON.parse('{{ { "bus_no": (bus.bus_no if bus else student.bus_no), "lat": (bus.lat if bus and bus.lat else 13.0420), "lng": (bus.lng if bus and bus.lng else 77.6200), "status": (bus.status if bus and bus.status else "On Route") } | tojson | safe }}');
+        const ROUTE_STOPS = JSON.parse('{{ (route.stops if route and route.stops else []) | tojson | safe }}');
+    </script>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/student.js') }}"></script>
+</body>
+</html>

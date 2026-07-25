@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Attendance Scanner Kiosk - SVIT Transport</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://saividya.ac.in/images/logo.png">
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <!-- HTML5 QR Code Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-kiosk: #0f172a;
+            --card-kiosk: #1e293b;
+            --accent-kiosk: #3b82f6;
+            --success-kiosk: #10b981;
+            --warning-kiosk: #f59e0b;
+            --danger-kiosk: #ef4444;
+            --text-kiosk: #f8fafc;
+            --muted-kiosk: #94a3b8;
+            --border-kiosk: rgba(255, 255, 255, 0.1);
+        }
+
+        body.light-theme {
+            --bg-kiosk: #f1f5f9;
+            --card-kiosk: #ffffff;
+            --accent-kiosk: #2563eb;
+            --text-kiosk: #0f172a;
+            --muted-kiosk: #64748b;
+            --border-kiosk: rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-kiosk);
+            color: var(--text-kiosk);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Kiosk Bar */
+        .kiosk-header {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-kiosk);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .kiosk-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .kiosk-brand img {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .kiosk-title h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .kiosk-title p {
+            font-size: 0.82rem;
+            color: var(--muted-kiosk);
+            margin: 2px 0 0 0;
+        }
+
+        .kiosk-pills {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pill-badge {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pill-badge.bus-pill {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        .lang-select-kiosk {
+            background: var(--card-kiosk);
+            border: 1px solid var(--border-kiosk);
+            color: var(--text-kiosk);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .theme-toggle-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-kiosk);
+            color: var(--text-kiosk);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        .logout-btn-kiosk {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #f87171;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn-kiosk:hover {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            transform: translateY(-1px);
+        }
+
+        /* Container Layout */
+        .kiosk-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px 40px 20px;
+            width: 100%;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        /* KPI Banner */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card-kiosk {
+            background: var(--card-kiosk);
+            border: 1px solid var(--border-kiosk);
+            border-radius: 16px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .kpi-card-kiosk:hover {
+            transform: translateY(-3px);
+        }
+
+        .kpi-info h3 {
+            font-size: 0.85rem;
+            color: var(--muted-kiosk);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 6px 0;
+        }
+
+        .kpi-info .val {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-kiosk);
+            margin: 0;
+            line-height: 1.1;
+        }
+
+        .kpi-icon-box {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-blue { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .icon-green { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .icon-orange { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .icon-purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+
+        /* Main Kiosk Grid */
+        .kiosk-grid {
+            display: grid;
+            grid-template-columns: 460px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .kiosk-grid {
+                grid-template-columns: 1fr;
+            }
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .kpi-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Column: Scanner Panel */
+        .scanner-card {
+            background: var(--card-kiosk);
+            border: 1px solid var(--border-kiosk);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card-header-kiosk {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-kiosk);
+            padding-bottom: 14px;
+        }
+
+        .card-header-kiosk h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Scanner Frame */
+        .scanner-viewport {
+            position: relative;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #qr-reader {
+            width: 100%;
+            height: 100%;
+        }
+
+        #qr-reader video {
+            object-fit: cover !important;
+            border-radius: 14px;
+        }
+
+        .laser-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ef4444, #f59e0b, #ef4444, transparent);
+            box-shadow: 0 0 15px #ef4444;
+            animation: scanLaser 2.2s ease-in-out infinite alternate;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @keyframes scanLaser {
+            0% { top: 5%; }
+            100% { top: 92%; }
+        }
+
+        .scan-overlay-frame {
+            position: absolute;
+            inset: 30px;
+            border: 2px stroke rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .scan-overlay-frame::before, .scan-overlay-frame::after {
+            content: '';
+            display: block;
+            height: 30px;
+            border-left: 4px solid #3b82f6;
+            border-right: 4px solid #3b82f6;
+        }
+
+        .scan-overlay-frame::before {
+            border-top: 4px solid #3b82f6;
+        }
+
+        .scan-overlay-frame::after {
+            border-bottom: 4px solid #3b82f6;
+        }
+
+        /* Manual Entry Backup Box */
+        .manual-entry-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-kiosk);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .manual-entry-box label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--muted-kiosk);
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .input-btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .manual-input {
+            flex: 1;
+            background: var(--bg-kiosk);
+            border: 1px solid var(--border-kiosk);
+            color: var(--text-kiosk);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            font-weight: 600;
+            outline: none;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: border-color 0.2s ease;
+        }
+
+        .manual-input:focus {
+            border-color: var(--accent-kiosk);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-scan-submit {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-scan-submit:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Quick Demo Student Pass Trigger Buttons */
+        .demo-quick-scans {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .demo-usn-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-kiosk);
+            color: var(--muted-kiosk);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .demo-usn-chip:hover {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-color: #3b82f6;
+        }
+
+        /* Right Column: HUD Popup & History Table */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Instant Result Banner HUD */
+        .scan-hud-banner {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+            border: 2px solid #10b981;
+            border-radius: 20px;
+            padding: 20px 24px;
+            display: none;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+            animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .scan-hud-banner.duplicate {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.05));
+            border-color: #f59e0b;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+        }
+
+        .scan-hud-banner.error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.05));
+            border-color: #ef4444;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hud-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: #10b981;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .scan-hud-banner.duplicate .hud-avatar { background: #f59e0b; }
+        .scan-hud-banner.error .hud-avatar { background: #ef4444; }
+
+        .hud-details {
+            flex: 1;
+        }
+
+        .hud-status-tag {
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #10b981;
+            margin-bottom: 4px;
+        }
+
+        .scan-hud-banner.duplicate .hud-status-tag { color: #f59e0b; }
+        .scan-hud-banner.error .hud-status-tag { color: #ef4444; }
+
+        .hud-name {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin: 0 0 4px 0;
+        }
+
+        .hud-meta {
+            font-size: 0.88rem;
+            color: var(--muted-kiosk);
+            display: flex;
+            gap: 16px;
+        }
+
+        .hud-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Activity Table Card */
+        .activity-card {
+            background: var(--card-kiosk);
+            border: 1px solid var(--border-kiosk);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .activity-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .search-box-kiosk {
+            position: relative;
+            width: 260px;
+        }
+
+        .search-box-kiosk i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted-kiosk);
+        }
+
+        .search-box-kiosk input {
+            width: 100%;
+            background: var(--bg-kiosk);
+            border: 1px solid var(--border-kiosk);
+            color: var(--text-kiosk);
+            padding: 8px 12px 8px 36px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            flex: 1;
+        }
+
+        .kiosk-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .kiosk-table th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted-kiosk);
+            padding: 12px 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-kiosk);
+        }
+
+        .kiosk-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-kiosk);
+            vertical-align: middle;
+        }
+
+        .kiosk-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .student-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .status-badge-present {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-badge {
+            font-family: monospace;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--muted-kiosk);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted-kiosk);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* SOS Alert Floating Button */
+        .btn-sos-kiosk {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-sos-kiosk:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Kiosk Navigation Header -->
+    <header class="kiosk-header">
+        <div class="kiosk-brand">
+            <img src="https://saividya.ac.in/images/logo.png" alt="SVIT Logo" onerror="this.src='https://via.placeholder.com/48?text=SVIT'">
+            <div class="kiosk-title">
+                <h1 data-i18n="driver_portal">SVIT BUS ATTENDANCE KIOSK</h1>
+                <p><span data-i18n="bus_attendance_kiosk">Onboard QR Scanner System</span> &bull; <strong>BUS {{ bus.bus_no }}</strong></p>
+            </div>
+        </div>
+
+        <div class="kiosk-pills">
+            <div class="pill-badge bus-pill">
+                <i class="fa-solid fa-bus"></i>
+                <span>BUS {{ bus.bus_no }} ({{ bus.reg_no }})</span>
+            </div>
+
+            <div class="pill-badge">
+                <i class="fa-solid fa-id-card"></i>
+                <span>{{ bus.driver_name }}</span>
+            </div>
+
+            <!-- SOS Button -->
+            <button class="btn-sos-kiosk" onclick="triggerDriverSOS()">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>SOS</span>
+            </button>
+
+            <!-- Language Dropdown Selector -->
+            <select id="kioskLangSelect" class="lang-select-kiosk" onchange="changeLanguage(this.value)">
+                <option value="en">English (EN)</option>
+                <option value="kn">ಕನ್ನಡ (KN)</option>
+                <option value="hi">हिन्दी (HI)</option>
+                <option value="te">తెలుగు (TE)</option>
+                <option value="ta">தமிழ் (TA)</option>
+                <option value="ml">മലയാളം (ML)</option>
+            </select>
+
+            <!-- Theme Toggle Button -->
+            <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+
+            <!-- Logout Button -->
+            <a href="{{ url_for('index') }}" class="logout-btn-kiosk" title="Logout from Kiosk">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span data-i18n="nav_logout">Logout</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="kiosk-container">
+
+        <!-- KPI Metrics Banner -->
+        <div class="kpi-row">
+            <div class="kpi-card-kiosk">
+                <div class="kpi-info">
+                    <h3 data-i18n="total_students_bus">Total Students on Bus</h3>
+                    <div class="val" id="totalBusStudentsVal">{{ total_students }}</div>
+                </div>
+                <div class="kpi-icon-box icon-blue">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+
+            <div class="kpi-card-kiosk">
+                <div class="kpi-info">
+                    <h3 data-i18n="scanned_onboard">Students Scanned</h3>
+                    <div class="val" id="scannedCountVal">{{ present_count }}</div>
+                </div>
+                <div class="kpi-icon-box icon-green">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+            </div>
+
+            <div class="kpi-card-kiosk">
+                <div class="kpi-info">
+                    <h3>Remaining / Pending</h3>
+                    <div class="val" id="remainingCountVal">{{ total_students - present_count }}</div>
+                </div>
+                <div class="kpi-icon-box icon-orange">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+            </div>
+
+            <div class="kpi-card-kiosk">
+                <div class="kpi-info">
+                    <h3>Boarding Progress</h3>
+                    <div class="val" id="boardingPctVal">
+                        {% if total_students > 0 %}
+                            {{ (present_count / total_students * 100)|round|int }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="kpi-icon-box icon-purple">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Kiosk Layout Grid -->
+        <div class="kiosk-grid">
+
+            <!-- LEFT COLUMN: Live Camera Scanner & Manual Entry -->
+            <div class="scanner-card">
+                <div class="card-header-kiosk">
+                    <h2>
+                        <div class="live-dot"></div>
+                        <span data-i18n="live_qr_scanner">Live Camera QR Scanner</span>
+                    </h2>
+                    <span style="font-size: 0.8rem; color: var(--muted-kiosk);">Auto-Detection Active</span>
+                </div>
+
+                <!-- Camera Viewport Box -->
+                <div class="scanner-viewport">
+                    <div class="laser-line"></div>
+                    <div class="scan-overlay-frame"></div>
+                    <div id="qr-reader"></div>
+                </div>
+
+                <p style="font-size: 0.85rem; color: var(--muted-kiosk); margin: -5px 0 0 0; text-align: center;" data-i18n="scan_pass_instruction">
+                    Hold student QR pass code in front of camera to mark attendance
+                </p>
+
+                <!-- Manual Backup Entry Input -->
+                <div class="manual-entry-box">
+                    <label data-i18n="manual_usn_entry">Manual USN Entry (Backup)</label>
+                    <div class="input-btn-group">
+                        <input type="text" id="manualUsnInput" class="manual-input" placeholder="Type USN (e.g. 1VA21CS010)..." data-i18n-placeholder="type_usn_placeholder" onkeypress="if(event.key==='Enter') submitManualScan()">
+                        <button class="btn-scan-submit" onclick="submitManualScan()">
+                            <i class="fa-solid fa-qrcode"></i>
+                            <span data-i18n="mark_present">MARK</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Sample Scan Chips for Testing -->
+                    <div style="margin-top: 12px; font-size: 0.78rem; color: var(--muted-kiosk);">
+                        <span>Quick Test Click:</span>
+                        <div class="demo-quick-scans">
+                            {% for student in students[:6] %}
+                                <div class="demo-usn-chip" onclick="quickScan('{{ student.usn }}')">
+                                    {{ student.full_name.split()[0] }} ({{ student.usn }})
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: HUD Instant Scan Result + History Table -->
+            <div class="right-column">
+
+                <!-- Instant HUD Banner -->
+                <div class="scan-hud-banner" id="scanHudBanner">
+                    <div class="hud-avatar" id="hudAvatar">AB</div>
+                    <div class="hud-details">
+                        <div class="hud-status-tag" id="hudStatusTag">STUDENT MARKED PRESENT</div>
+                        <div class="hud-name" id="hudStudentName">Arjun Bhat</div>
+                        <div class="hud-meta">
+                            <span><i class="fa-solid fa-id-badge"></i> <strong id="hudUsn">1VA21CS010</strong></span>
+                            <span><i class="fa-solid fa-location-dot"></i> <span id="hudStop">Mallathahalli</span></span>
+                            <span><i class="fa-solid fa-clock"></i> <span id="hudTime">07:15 AM</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Activity Table Card -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div>
+                            <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0;" data-i18n="scan_history">Today's Scan Activity Log</h2>
+                            <span style="font-size: 0.82rem; color: var(--muted-kiosk);">Real-time synchronized with student dashboards</span>
+                        </div>
+
+                        <div class="search-box-kiosk">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="kioskSearchInput" placeholder="Filter scanned students..." onkeyup="filterKioskTable()">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="kiosk-table" id="kioskTable">
+                            <thead>
+                                <tr>
+                                    <th>Student Details</th>
+                                    <th>USN</th>
+                                    <th>Boarding Stop</th>
+                                    <th>Time Scanned</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kioskTableBody">
+                                {% if scans %}
+                                    {% for scan in scans %}
+                                        <tr>
+                                            <td>
+                                                <div class="student-cell">
+                                                    <div class="avatar-circle">
+                                                        {{ scan.full_name[0]|upper }}
+                                                    </div>
+                                                    <div>
+                                                        <strong style="color: var(--text-kiosk);">{{ scan.full_name }}</strong>
+                                                        <div style="font-size: 0.78rem; color: var(--muted-kiosk);">{{ scan.email }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><strong style="color: #60a5fa;">{{ scan.usn }}</strong></td>
+                                            <td><i class="fa-solid fa-location-dot" style="color: var(--muted-kiosk); margin-right: 4px;"></i> {{ scan.stop_name or 'Main Stop' }}</td>
+                                            <td><span class="time-badge">{{ scan.date }}</span></td>
+                                            <td>
+                                                <span class="status-badge-present">
+                                                    <i class="fa-solid fa-circle-check"></i> Present
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr id="emptyRow">
+                                        <td colspan="5">
+                                            <div class="empty-state">
+                                                <i class="fa-solid fa-qrcode"></i>
+                                                <p>No student passes scanned yet today for Bus {{ bus.bus_no }}.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Translations & Kiosk Client Script -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
+    <script>
+        // Global Kiosk Parameters
+        const BUS_NO = "{{ bus.bus_no }}";
+        let html5QrCode = null;
+        let lastScannedCode = '';
+        let lastScanTimestamp = 0;
+
+        // Theme Toggle Functionality
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('kioskTheme', isLight ? 'light' : 'dark');
+            document.getElementById('themeIcon').className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+        }
+
+        // Initialize saved theme & language on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('kioskTheme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeIcon').className = 'fa-solid fa-moon';
+            }
+
+            const savedLang = localStorage.getItem('appLanguage') || 'en';
+            const selectEl = document.getElementById('kioskLangSelect');
+            if (selectEl) selectEl.value = savedLang;
+            changeLanguage(savedLang);
+
+            startScanner();
+        });
+
+        // Audio Chime Feedback (Web Audio API)
+        function playBeepSound(type = 'success') {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'success') {
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.2);
+                } else if (type === 'duplicate') {
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.25);
+                } else {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.3);
+                }
+            } catch (e) {
+                console.log('Audio playback not supported:', e);
+            }
+        }
+
+        // Start HTML5 QR Code Scanner
+        function startScanner() {
+            try {
+                html5QrCode = new Html5Qrcode("qr-reader");
+                const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    onScanSuccess
+                ).catch(err => {
+                    console.log("Rear camera init failed, attempting default camera:", err);
+                    html5QrCode.start(
+                        { facingMode: "user" },
+                        config,
+                        onScanSuccess
+                    ).catch(e => {
+                        console.log("Camera access error:", e);
+                    });
+                });
+            } catch (err) {
+                console.error("Html5Qrcode initialize error:", err);
+            }
+        }
+
+        // Camera Scan Callback
+        function onScanSuccess(decodedText) {
+            const now = Date.now();
+            if (decodedText === lastScannedCode && (now - lastScanTimestamp) < 4000) {
+                return;
+            }
+
+            lastScannedCode = decodedText;
+            lastScanTimestamp = now;
+
+            processScan(decodedText);
+        }
+
+        // Quick Click Scan Handler
+        function quickScan(usn) {
+            document.getElementById('manualUsnInput').value = usn;
+            submitManualScan();
+        }
+
+        // Manual Input Submit
+        function submitManualScan() {
+            const input = document.getElementById('manualUsnInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            processScan(val);
+            input.value = '';
+        }
+
+        // Process Scan API Request
+        function processScan(scannedPayload) {
+            fetch('/api/scan-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usn: scannedPayload, bus_no: BUS_NO })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.already_marked) {
+                        playBeepSound('duplicate');
+                        showHud(data.student, 'duplicate', data.message, data.time);
+                    } else {
+                        playBeepSound('success');
+                        showHud(data.student, 'success', 'STUDENT MARKED PRESENT', data.time);
+                        updateKpiCounts(data.scanned_count, data.total_bus_students);
+                        appendTableRow(data.student, data.time);
+                    }
+                } else {
+                    playBeepSound('error');
+                    showHud({ full_name: 'Unknown Student', usn: scannedPayload, stop_name: 'N/A' }, 'error', data.message, '');
+                }
+            })
+            .catch(err => {
+                console.error("Scan error:", err);
+                playBeepSound('error');
+            });
+        }
+
+        // Show Instant HUD Result Banner
+        function showHud(student, mode, statusMsg, timeStr) {
+            const banner = document.getElementById('scanHudBanner');
+            const avatar = document.getElementById('hudAvatar');
+            const statusTag = document.getElementById('hudStatusTag');
+            const nameEl = document.getElementById('hudStudentName');
+            const usnEl = document.getElementById('hudUsn');
+            const stopEl = document.getElementById('hudStop');
+            const timeEl = document.getElementById('hudTime');
+
+            banner.className = `scan-hud-banner ${mode}`;
+            avatar.textContent = student.full_name ? student.full_name[0].toUpperCase() : '?';
+            statusTag.textContent = statusMsg;
+            nameEl.textContent = student.full_name || 'Invalid Pass';
+            usnEl.textContent = student.usn || '';
+            stopEl.textContent = student.stop_name || 'Main Stop';
+            timeEl.textContent = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            banner.style.display = 'flex';
+
+            clearTimeout(banner.timer);
+            banner.timer = setTimeout(() => {
+                banner.style.display = 'none';
+            }, 6000);
+        }
+
+        // Dynamic KPI Cards Update
+        function updateKpiCounts(scannedCount, totalStudents) {
+            document.getElementById('scannedCountVal').textContent = scannedCount;
+            document.getElementById('totalBusStudentsVal').textContent = totalStudents;
+
+            const remaining = totalStudents - scannedCount;
+            document.getElementById('remainingCountVal').textContent = Math.max(0, remaining);
+
+            const pct = totalStudents > 0 ? Math.round((scannedCount / totalStudents) * 100) : 0;
+            document.getElementById('boardingPctVal').textContent = `${pct}%`;
+        }
+
+        // Append New Row to Recent Scans Activity Table
+        function appendTableRow(student, timeStr) {
+            const tbody = document.getElementById('kioskTableBody');
+
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            const row = document.createElement('tr');
+            row.style.animation = 'fadeInRow 0.4s ease';
+
+            row.innerHTML = `
+                <td>
+                    <div class="student-cell">
+                        <div class="avatar-circle">${student.full_name[0].toUpperCase()}</div>
+                        <div>
+                            <strong style="color: var(--text-kiosk);">${student.full_name}</strong>
+                            <div style="font-size: 0.78rem; color: var(--muted-kiosk);">${student.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><strong style="color: #60a5fa;">${student.usn}</strong></td>
+                <td><i class="fa-solid fa-location-dot" style="color: var(--muted-kiosk); margin-right: 4px;"></i> ${student.stop_name || 'Main Stop'}</td>
+                <td><span class="time-badge">${timeStr || 'Just Now'}</span></td>
+                <td>
+                    <span class="status-badge-present">
+                        <i class="fa-solid fa-circle-check"></i> Present
+                    </span>
+                </td>
+            `;
+
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        // Filter Table Rows by Search Query
+        function filterKioskTable() {
+            const query = document.getElementById('kioskSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#kioskTableBody tr');
+
+            rows.forEach(row => {
+                if (row.id === 'emptyRow') return;
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        // Trigger Driver Emergency SOS Alert
+        function triggerDriverSOS() {
+            if (confirm("Send emergency SOS alert to SVIT Transport Admin Office for Bus " + BUS_NO + "?")) {
+                fetch('/api/sos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bus_no: BUS_NO,
+                        message: `Emergency SOS triggered by Driver of Bus ${BUS_NO}`,
+                        triggered_by: 'Driver'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert("🚨 EMERGENCY SOS BROADCASTED TO TRANSPORT ADMIN OFFICE!");
+                })
+                .catch(err => alert("SOS Alert dispatched."));
+            }
+        }
+    </script>
+</body>
+</html>
