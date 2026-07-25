@@ -1060,6 +1060,16 @@ function openAddStudentModal() {
     }
 }
 
+function openAddDriverModal() {
+    switchAdminTab('tab-register-user');
+    const roleSelect = document.getElementById('reg-role');
+    if (roleSelect) {
+        roleSelect.value = 'driver';
+        toggleRollNumberField();
+    }
+}
+
+
 async function handleUserRegistration(e) {
     e.preventDefault();
 

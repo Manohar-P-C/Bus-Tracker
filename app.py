@@ -310,15 +310,26 @@ def api_scan_attendance():
 
     conn = get_db_connection()
 
+    # Support full JSON payload parsing from QR pass
+    search_target = scanned_payload
+    if scanned_payload.startswith('{') and scanned_payload.endswith('}'):
+        try:
+            parsed = json.loads(scanned_payload)
+            if isinstance(parsed, dict) and 'usn' in parsed and parsed['usn']:
+                search_target = str(parsed['usn']).strip()
+        except Exception:
+            pass
+
     # Search for student by USN, email, or full name
     student = conn.execute("""
         SELECT * FROM students 
         WHERE LOWER(usn) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(full_name) = LOWER(?)
-    """, (scanned_payload, scanned_payload, scanned_payload)).fetchone()
+           OR LOWER(usn) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(full_name) = LOWER(?)
+    """, (search_target, search_target, search_target, scanned_payload, scanned_payload, scanned_payload)).fetchone()
 
     if not student:
         conn.close()
-        return jsonify({'success': False, 'message': f'No registered student found for USN: {scanned_payload}'}), 404
+        return jsonify({'success': False, 'message': f'No registered student found for USN: {search_target}'}), 404
 
     student_dict = dict(student)
     student_id = student_dict['id']

@@ -346,7 +346,7 @@ def seed_data(cursor):
         r_info = route_data[bus_idx-1]
         stops = r_info["stops"]
         for s_idx in range(1, 11): # 10 students per bus
-            if student_counter == 1:
+            if student_counter == 81:
                 f_name = "Arjun"
                 l_name = "Bhat"
                 branch = "CS"
@@ -359,7 +359,7 @@ def seed_data(cursor):
 
             name = f"{f_name} {l_name}"
             fname_lower = f_name.lower()
-            email = f"{fname_lower}{student_counter}@saividya.ac.in" if student_counter > 1 else "arjun@saividya.ac.in"
+            email = "arjun@saividya.ac.in" if student_counter == 81 else f"{fname_lower}{student_counter}@saividya.ac.in"
             phone = f"97410{30000 + student_counter}"
             parent_phone = f"98440{40000 + student_counter}"
             stop_assigned = stops[s_idx % len(stops)]

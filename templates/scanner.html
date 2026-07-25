@@ -1062,10 +1062,20 @@
 
         // Process Scan API Request
         function processScan(scannedPayload) {
+            let usnPayload = scannedPayload;
+            if (typeof scannedPayload === 'string' && scannedPayload.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(scannedPayload);
+                    if (parsed && parsed.usn) {
+                        usnPayload = parsed.usn;
+                    }
+                } catch (e) {}
+            }
+
             fetch('/api/scan-attendance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usn: scannedPayload, bus_no: BUS_NO })
+                body: JSON.stringify({ usn: usnPayload, bus_no: BUS_NO })
             })
             .then(res => res.json())
             .then(data => {
