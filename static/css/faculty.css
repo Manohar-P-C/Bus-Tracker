@@ -479,6 +479,15 @@ body {
     flex: 1;
 }
 
+/* Tab Panels */
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
 /* ==========================================================================
    TOP STATS ROW (5 CARDS MATCHING DESIGN MOCKUP)
    ========================================================================== */
