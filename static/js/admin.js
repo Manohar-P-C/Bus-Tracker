@@ -3,6 +3,7 @@
 let liveMap = null;
 let routeDetailMap = null;
 let currentStudentsList = [];
+let currentBusesList = [];
 let currentDriversList = [];
 let currentFacultyList = [];
 let simulationActive = false;
@@ -10,8 +11,9 @@ let simulationInterval = null;
 let simulationMarkers = [];
 let lastSOSCount = 0;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initThemeIcon();
+    await populateBusDropdowns();
     loadDashboardStats();
     loadRecentSOS();
     loadLiveMap();
@@ -133,6 +135,56 @@ function closeAccountModal() {
 }
 
 // ==========================================
+// DYNAMIC BUS DROPDOWN POPULATOR
+// ==========================================
+
+async function populateBusDropdowns() {
+    try {
+        const res = await fetch('/api/buses');
+        currentBusesList = await res.json();
+        
+        // 1. Populate "Assign Bus Number" dropdown in Create User panel
+        const regBusSelect = document.getElementById('reg-bus-no');
+        if (regBusSelect) {
+            const currentVal = regBusSelect.value;
+            let html = '';
+            currentBusesList.forEach(b => {
+                const label = b.route_name ? `Bus ${b.bus_no} (${b.route_name})` : `Bus ${b.bus_no}`;
+                html += `<option value="${b.bus_no}">${label}</option>`;
+            });
+            if (html) {
+                regBusSelect.innerHTML = html;
+                if (currentVal && currentBusesList.some(b => b.bus_no == currentVal)) {
+                    regBusSelect.value = currentVal;
+                }
+            }
+        }
+
+        // 2. Populate Students Tab - Bus Filter dropdown
+        const filterSelect = document.getElementById('student-bus-filter');
+        if (filterSelect) {
+            const currentVal = filterSelect.value || 'all';
+            let totalStudents = currentBusesList.reduce((acc, b) => acc + (b.total_students || 0), 0);
+            let html = `<option value="all">All ${currentBusesList.length} Buses (${totalStudents} Students)</option>`;
+            currentBusesList.forEach(b => {
+                html += `<option value="${b.bus_no}">Bus ${b.bus_no} (${b.total_students || 0} Students)</option>`;
+            });
+            filterSelect.innerHTML = html;
+            if (currentVal) filterSelect.value = currentVal;
+        }
+
+        // 3. Update navbar & stat card bus count headers
+        const busCountEls = document.querySelectorAll('#nav-bus-count, #stat-buses');
+        busCountEls.forEach(el => {
+            if (el) el.textContent = currentBusesList.length;
+        });
+
+    } catch (err) {
+        console.error("Error populating bus dropdowns:", err);
+    }
+}
+
+// ==========================================
 // FEATURE 1: LIVE GPS MOVEMENT SIMULATOR
 // ==========================================
 
@@ -147,6 +199,19 @@ const routeCoordsMap = {
     8: [[13.0975, 77.6080], [13.1000, 77.5960], [13.1150, 77.5850], [13.1300, 77.5780], [13.1400, 77.5720], [13.1583, 77.5684]],
     9: [[13.2925, 77.5410], [13.2800, 77.5450], [13.2500, 77.5500], [13.2100, 77.5580], [13.1800, 77.5650], [13.1583, 77.5684]]
 };
+
+function getRouteCoords(busNo) {
+    if (routeCoordsMap[busNo]) return routeCoordsMap[busNo];
+    const bNo = parseInt(busNo);
+    const startLat = 13.0000 + ((bNo * 0.015) % 0.10);
+    const startLng = 77.5000 + ((bNo * 0.012) % 0.12);
+    return [
+        [startLat, startLng],
+        [startLat + 0.03, startLng + 0.02],
+        [startLat + 0.07, startLng + 0.04],
+        [13.1583, 77.5684]
+    ];
+}
 
 function toggleLiveSimulation() {
     if (simulationActive) {
@@ -171,14 +236,17 @@ function startSimulation() {
     simulationMarkers.forEach(m => liveMap.removeLayer(m));
     simulationMarkers = [];
 
+    const activeBuses = currentBusesList.length > 0 ? currentBusesList : Array.from({length: 9}, (_, i) => ({ bus_no: i + 1 }));
+
     // Initialize bus positions at start of routes
     const busStates = {};
-    for (let busNo = 1; busNo <= 9; busNo++) {
-        const coords = routeCoordsMap[busNo];
+    activeBuses.forEach(b => {
+        const busNo = b.bus_no;
+        const coords = getRouteCoords(busNo);
         busStates[busNo] = {
-            progress: 0, // 0 to 1
+            progress: 0,
             coords: coords,
-            speed: 0.008 + Math.random() * 0.006 // Varied speed per bus
+            speed: 0.008 + Math.random() * 0.006
         };
         
         const marker = L.circleMarker(coords[0], {
@@ -200,14 +268,15 @@ function startSimulation() {
 
         simulationMarkers.push(marker);
         busStates[busNo].marker = marker;
-    }
+    });
 
     // Animation interval
     simulationInterval = setInterval(() => {
         let allArrived = true;
-        for (let busNo = 1; busNo <= 9; busNo++) {
+        activeBuses.forEach(b => {
+            const busNo = b.bus_no;
             const state = busStates[busNo];
-            if (state.progress >= 1) continue;
+            if (!state || state.progress >= 1) return;
             allArrived = false;
 
             state.progress = Math.min(1, state.progress + state.speed);
@@ -222,20 +291,18 @@ function startSimulation() {
 
             state.marker.setLatLng([lat, lng]);
 
-            // Update colors when arriving
             if (state.progress >= 0.95) {
                 state.marker.setStyle({ fillColor: '#3b82f6' });
             }
-        }
+        });
 
-        // Status text
         const movingCount = Object.values(busStates).filter(s => s.progress < 1).length;
-        const arrivedCount = 9 - movingCount;
+        const arrivedCount = activeBuses.length - movingCount;
         document.getElementById('map-status-text').textContent = 
             `Live: ${movingCount} buses in transit, ${arrivedCount} arrived at SVIT Campus`;
 
         if (allArrived) {
-            document.getElementById('map-status-text').textContent = '✅ All 9 buses have arrived at SVIT Campus!';
+            document.getElementById('map-status-text').textContent = `✅ All ${activeBuses.length} buses have arrived at SVIT Campus!`;
             stopSimulation();
         }
     }, 800);
@@ -340,9 +407,7 @@ function openEditDriverModal(driverId) {
     document.getElementById('edit-driver-name').value = d.name;
     document.getElementById('edit-driver-phone').value = d.phone;
     document.getElementById('edit-driver-email').value = d.email;
-    document.getElementById('edit-driver-license').value = d.license_no;
     document.getElementById('edit-driver-bus').value = d.assigned_bus;
-    document.getElementById('edit-driver-exp').value = d.experience_yrs;
 
     document.getElementById('edit-driver-modal').classList.add('active');
 }
@@ -353,14 +418,16 @@ function closeEditDriverModal() {
 
 async function saveDriverEdit(e) {
     e.preventDefault();
+    const driverId = parseInt(document.getElementById('edit-driver-id').value);
+    const d = currentDriversList.find(item => item.id === driverId);
     const payload = {
-        id: parseInt(document.getElementById('edit-driver-id').value),
+        id: driverId,
         name: document.getElementById('edit-driver-name').value,
         phone: document.getElementById('edit-driver-phone').value,
         email: document.getElementById('edit-driver-email').value,
-        license_no: document.getElementById('edit-driver-license').value,
+        license_no: d ? d.license_no : 'N/A',
         assigned_bus: parseInt(document.getElementById('edit-driver-bus').value),
-        experience_yrs: parseInt(document.getElementById('edit-driver-exp').value)
+        experience_yrs: d ? d.experience_yrs : 0
     };
 
     try {
@@ -389,7 +456,6 @@ function openEditFacultyModal(facultyId) {
     document.getElementById('edit-faculty-name').value = f.name;
     document.getElementById('edit-faculty-phone').value = f.phone;
     document.getElementById('edit-faculty-email').value = f.email;
-    document.getElementById('edit-faculty-dept').value = f.department;
     document.getElementById('edit-faculty-bus').value = f.assigned_bus;
 
     document.getElementById('edit-faculty-modal').classList.add('active');
@@ -545,13 +611,16 @@ async function loadDashboardStats() {
         const filterSelect = document.getElementById('student-bus-filter');
         if (filterSelect && data.bus_counts) {
             const currentSelected = filterSelect.value || 'all';
-            let optionsHTML = `<option value="all">All ${data.total_buses || 9} Buses (${data.total_students} Students)</option>`;
-            for (let i = 1; i <= 9; i++) {
-                const count = data.bus_counts[i] || 0;
-                optionsHTML += `<option value="${i}">Bus ${i} (${count} Students)</option>`;
-            }
+            const busKeys = Object.keys(data.bus_counts).map(Number).sort((a, b) => a - b);
+            let optionsHTML = `<option value="all">All ${data.total_buses || busKeys.length} Buses (${data.total_students} Students)</option>`;
+            busKeys.forEach(busNo => {
+                const count = data.bus_counts[busNo] || 0;
+                optionsHTML += `<option value="${busNo}">Bus ${busNo} (${count} Students)</option>`;
+            });
             filterSelect.innerHTML = optionsHTML;
-            filterSelect.value = currentSelected;
+            if (currentSelected && (currentSelected === 'all' || busKeys.includes(Number(currentSelected)))) {
+                filterSelect.value = currentSelected;
+            }
         }
     } catch (e) {
         console.error("Error loading stats:", e);
@@ -766,6 +835,9 @@ async function loadBusesData() {
         const container = document.getElementById('buses-grid-container');
         if (!container) return;
 
+        const busesTabCount = document.getElementById('buses-tab-count');
+        if (busesTabCount) busesTabCount.textContent = buses.length;
+
         container.innerHTML = '';
 
         buses.forEach(b => {
@@ -804,7 +876,9 @@ async function deleteBus(busNo) {
     const res = await fetch(`/api/buses?bus_no=${busNo}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.success) {
+        await populateBusDropdowns();
         loadBusesData();
+        loadRoutesData();
         loadDashboardStats();
     }
 }
@@ -824,9 +898,7 @@ async function loadDriversData() {
                 <td><strong>${d.name}</strong></td>
                 <td>${d.phone}</td>
                 <td><small>${d.email}</small></td>
-                <td><code>${d.license_no}</code></td>
                 <td><span class="badge-pill bg-blue">Bus ${d.assigned_bus}</span></td>
-                <td>${d.experience_yrs} Years</td>
                 <td>
                     <button class="btn-sm btn-outline text-blue" onclick="openEditDriverModal(${d.id})"><i class="bi bi-pencil"></i> Edit</button>
                 </td>
@@ -853,7 +925,6 @@ async function loadFacultyData() {
                 <td><strong>${f.name}</strong></td>
                 <td>${f.phone}</td>
                 <td><small>${f.email}</small></td>
-                <td><span class="badge-pill bg-purple">${f.department}</span></td>
                 <td><span class="badge-pill bg-blue">Bus ${f.assigned_bus}</span></td>
                 <td><small>${f.route_name}</small></td>
                 <td>
@@ -1133,7 +1204,9 @@ async function handleBusRegistration(e) {
     alert(data.message);
     if (data.success) {
         document.getElementById('create-bus-form').reset();
+        await populateBusDropdowns();
         loadBusesData();
+        loadRoutesData();
         loadDashboardStats();
     }
 }

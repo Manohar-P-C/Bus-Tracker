@@ -36,88 +36,111 @@ def login():
     user_input = request.form.get('email', '').strip().lower() # Accepts email, username, or USN
     password = request.form.get('password', '').strip()
 
+    if not user_input or not password:
+        return jsonify({'success': False, 'message': 'Please enter both email/USN and password.'}), 400
+
     conn = get_db_connection()
+    first_name_match = f"{user_input}%"
     
-    # Flexible lookup: search by email, USN, full_name, or first name
+    # Step 1: Strictly lookup user with the exact requested role
     query = """
         SELECT * FROM users 
         WHERE (LOWER(email) = ? OR LOWER(usn) = ? OR LOWER(full_name) = ? OR LOWER(full_name) LIKE ? OR LOWER(email) LIKE ?)
-        AND (role = ? OR ? = 'admin')
+        AND role = ?
     """
-    first_name_match = f"{user_input}%"
-    user = conn.execute(query, (user_input, user_input, user_input, first_name_match, first_name_match, role, role)).fetchone()
+    user = conn.execute(query, (user_input, user_input, user_input, first_name_match, first_name_match, role)).fetchone()
     
+    # Step 2: If user not found under this role, check if they exist under ANY role to show role mismatch error
     if not user:
-        # Global fallback lookup across all roles
-        user = conn.execute("""
+        any_user = conn.execute("""
             SELECT * FROM users 
-            WHERE LOWER(email) = ? OR LOWER(usn) = ? OR LOWER(full_name) LIKE ? OR LOWER(email) LIKE ?
-        """, (user_input, user_input, first_name_match, first_name_match)).fetchone()
+            WHERE LOWER(email) = ? OR LOWER(usn) = ? OR LOWER(full_name) = ? OR LOWER(full_name) LIKE ? OR LOWER(email) LIKE ?
+        """, (user_input, user_input, user_input, first_name_match, first_name_match)).fetchone()
+        
+        conn.close()
+        
+        if any_user:
+            actual_role = any_user['role'].capitalize()
+            return jsonify({
+                'success': False, 
+                'message': f'Access Denied: Account belongs to a {actual_role}. Please switch to the "{actual_role}" login tab.'
+            }), 403
+        else:
+            return jsonify({
+                'success': False, 
+                'message': f'Invalid credentials or account not found for {role.capitalize()} role.'
+            }), 401
 
+    user_dict = dict(user)
     conn.close()
 
-    if user or (user_input and password):
-        user_dict = dict(user) if user else {}
-        user_role = user_dict.get('role', role)
-        
-        # Format user name & designation title
-        if user:
-            user_name = user_dict.get('full_name', 'Student User')
-            user_email = user_dict.get('email', 'student@saividya.ac.in')
-            user_usn = user_dict.get('usn', '')
-        elif user_input == 'admin@saividya.ac.in':
-            user_name = 'Prof. Suresh Naidu (Transport Head)'
-            user_email = 'admin@saividya.ac.in'
-            user_usn = 'ADMIN02'
-        elif user_input == 'principal@saividya.ac.in':
-            user_name = 'Dr. Ramesh Kumar (Principal)'
-            user_email = 'principal@saividya.ac.in'
-            user_usn = 'ADMIN01'
-        else:
-            user_name = user_input.split('@')[0].capitalize()
-            user_email = user_input if '@' in user_input else f"{user_input}@saividya.ac.in"
-            user_usn = ''
-
-        if 'principal' in user_email.lower() or 'principal' in user_name.lower():
-            user_title = 'Principal & Super Admin'
-        elif user_role == 'admin':
-            user_title = 'Transport Head & System Admin'
-        elif user_role == 'student':
-            user_title = 'Student (SVIT Transport)'
-        elif user_role == 'scanner':
-            user_title = 'Bus Attendance Kiosk System'
-        else:
-            user_title = f'{user_role.capitalize()} User'
-
-        session.permanent = True
-        session['user'] = {
-            'id': user_dict.get('id', 1) if user else 1,
-            'name': user_name,
-            'email': user_email,
-            'usn': user_usn,
-            'role': user_role,
-            'title': user_title
-        }
-        
-        if user_role == 'admin':
-            target_url = url_for('admin_dashboard')
-        elif user_role == 'student':
-            target_url = url_for('student_dashboard')
-        elif user_role == 'driver':
-            target_url = url_for('driver_dashboard')
-        elif user_role == 'scanner':
-            target_url = url_for('bus_qr_kiosk')
-        else:
-            target_url = url_for('index', role=user_role)
-
-        return jsonify({
-            'success': True,
-            'message': 'Login successful!',
-            'redirect_url': target_url,
-            'user': session['user']
-        })
+    # Step 3: Password verification
+    stored_password = user_dict.get('password', '')
     
-    return jsonify({'success': False, 'message': 'Invalid credentials.'}), 401
+    # Support default passwords for convenience while strictly validating input
+    default_role_passwords = {
+        'admin': ['admin123', 'admin'],
+        'driver': ['driver123', 'driver'],
+        'student': ['student123', 'student', 'pass123', f"{user_dict.get('full_name', '').split()[0].lower()}1000"],
+        'faculty': ['faculty123', 'faculty'],
+        'parent': ['parent123', 'parent'],
+        'scanner': ['scanner123', 'scanner']
+    }
+    allowed_passwords = [stored_password] + default_role_passwords.get(role, [])
+    
+    if password not in allowed_passwords and password != stored_password:
+        return jsonify({'success': False, 'message': 'Invalid password. Please check your credentials.'}), 401
+
+    # Step 4: Login success - construct session user profile
+    user_name = user_dict.get('full_name', user_input.capitalize())
+    user_email = user_dict.get('email', f"{user_input}@saividya.ac.in")
+    user_usn = user_dict.get('usn', '')
+    user_role = user_dict.get('role', role)
+
+    if 'principal' in user_email.lower() or 'principal' in user_name.lower():
+        user_title = 'Principal & Super Admin'
+    elif user_role == 'admin':
+        user_title = 'Transport Head & System Admin'
+    elif user_role == 'student':
+        user_title = 'Student (SVIT Transport)'
+    elif user_role == 'scanner':
+        user_title = 'Bus Attendance Kiosk System'
+    elif user_role == 'driver':
+        user_title = 'Bus Driver'
+    elif user_role == 'faculty':
+        user_title = 'Faculty Coordinator'
+    elif user_role == 'parent':
+        user_title = 'Parent / Guardian'
+    else:
+        user_title = f'{user_role.capitalize()} User'
+
+    session.permanent = True
+    session['user'] = {
+        'id': user_dict.get('id', 1),
+        'name': user_name,
+        'email': user_email,
+        'usn': user_usn,
+        'role': user_role,
+        'title': user_title
+    }
+    
+    if user_role == 'admin':
+        target_url = url_for('admin_dashboard')
+    elif user_role == 'student':
+        target_url = url_for('student_dashboard')
+    elif user_role == 'driver':
+        target_url = url_for('driver_dashboard')
+    elif user_role == 'scanner':
+        target_url = url_for('bus_qr_kiosk')
+    else:
+        target_url = url_for('index', role=user_role)
+
+    return jsonify({
+        'success': True,
+        'message': f'Welcome, {user_name}!',
+        'redirect_url': target_url,
+        'user': session['user']
+    })
 
 @app.route('/admin')
 @app.route('/admin/dashboard')
@@ -394,30 +417,36 @@ def api_scan_attendance():
 
     conn = get_db_connection()
 
-    # Support full JSON payload parsing from QR pass
+    # Support full JSON payload parsing from QR pass and robust USN regex extraction
     search_target = scanned_payload
     payload_bus_no = None
-    if scanned_payload.startswith('{') and scanned_payload.endswith('}'):
+    if isinstance(scanned_payload, str) and scanned_payload.strip().startswith('{') and scanned_payload.strip().endswith('}'):
         try:
-            parsed = json.loads(scanned_payload)
+            parsed = json.loads(scanned_payload.strip())
             if isinstance(parsed, dict):
                 if 'usn' in parsed and parsed['usn']:
                     search_target = str(parsed['usn']).strip()
+                elif 'USN' in parsed and parsed['USN']:
+                    search_target = str(parsed['USN']).strip()
                 if 'bus_no' in parsed and parsed['bus_no']:
                     payload_bus_no = int(parsed['bus_no'])
         except Exception:
             pass
 
+    import re
+    usn_match = re.search(r'1VA\d{2}[A-Z]{2,4}\d{3}', search_target, re.IGNORECASE)
+    cleaned_target = usn_match.group(0) if usn_match else search_target.strip()
+
     # Search for student by USN, email, or full name
     student = conn.execute("""
         SELECT * FROM students 
-        WHERE LOWER(usn) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(full_name) = LOWER(?)
-           OR LOWER(usn) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(full_name) = LOWER(?)
-    """, (search_target, search_target, search_target, scanned_payload, scanned_payload, scanned_payload)).fetchone()
+        WHERE UPPER(usn) = UPPER(?) OR UPPER(email) = UPPER(?) OR UPPER(full_name) = UPPER(?)
+           OR UPPER(usn) = UPPER(?) OR UPPER(email) = UPPER(?) OR UPPER(full_name) = UPPER(?)
+    """, (cleaned_target, cleaned_target, cleaned_target, search_target, search_target, search_target)).fetchone()
 
     if not student:
         conn.close()
-        return jsonify({'success': False, 'message': f'No registered student found for USN: {search_target}'}), 404
+        return jsonify({'success': False, 'message': f'No registered student found for USN: {cleaned_target}'}), 404
 
     student_dict = dict(student)
     student_id = student_dict['id']
@@ -623,7 +652,7 @@ def handle_students():
         conn.close()
         return jsonify({'success': True, 'message': 'Student deleted!'})
 
-# 2. TOTAL BUSES API (9 Buses)
+# 2. TOTAL BUSES API (Dynamic Buses & Routes)
 @app.route('/api/buses', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def handle_buses():
     conn = get_db_connection()
@@ -642,16 +671,35 @@ def handle_buses():
 
     elif request.method == 'POST':
         data = request.json
+        bus_no = int(data['bus_no'])
+        reg_no = data['reg_no']
+        capacity = int(data.get('capacity', 40))
+        driver_name = data.get('driver_name') or 'Unassigned'
+        driver_phone = data.get('driver_phone', '')
+        faculty_coord = data.get('faculty_coordinator') or 'Unassigned'
+        route_name = data.get('route_name') or f'Route {bus_no}'
+        status = data.get('status', 'On Time')
+        
+        lat = float(data.get('lat', 13.0850 + ((bus_no % 10) * 0.005)))
+        lng = float(data.get('lng', 77.5800 + ((bus_no % 10) * 0.003)))
+
         conn.execute('''
         INSERT INTO buses (bus_no, reg_no, capacity, driver_name, driver_phone, faculty_coordinator, route_name, status, lat, lng)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (data['bus_no'], data['reg_no'], data.get('capacity', 40), data.get('driver_name', 'Unassigned'),
-              data.get('driver_phone', ''), data.get('faculty_coordinator', 'Unassigned'),
-              data.get('route_name', 'Default Route'), data.get('status', 'On Time'),
-              data.get('lat', 13.0985), data.get('lng', 77.5877)))
+        ''', (bus_no, reg_no, capacity, driver_name, driver_phone, faculty_coord, route_name, status, lat, lng))
+
+        # Check if route entry exists for this bus, if not create one automatically
+        existing_route = conn.execute("SELECT id FROM routes WHERE bus_no = ?", (bus_no,)).fetchone()
+        if not existing_route:
+            stops = [f"Bus {bus_no} Starting Point (6:50 AM)", f"Stop Point 1 (7:15 AM)", f"Stop Point 2 (7:40 AM)", "SVIT Campus (8:15 AM)"]
+            conn.execute('''
+            INSERT INTO routes (route_name, bus_no, start_point, end_point, stops_json, distance_km, est_time_min)
+            VALUES (?, ?, ?, 'SVIT Campus', ?, 22.0, 60)
+            ''', (route_name, bus_no, f"Bus {bus_no} Starting Point", json.dumps(stops)))
+
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': 'New bus registered successfully!'})
+        return jsonify({'success': True, 'message': f'Bus {bus_no} registered successfully!'})
 
     elif request.method == 'PUT':
         data = request.json
@@ -667,11 +715,12 @@ def handle_buses():
     elif request.method == 'DELETE':
         bus_no = request.args.get('bus_no')
         conn.execute("DELETE FROM buses WHERE bus_no = ?", (bus_no,))
+        conn.execute("DELETE FROM routes WHERE bus_no = ?", (bus_no,))
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Bus deleted!'})
 
-# 3. DRIVERS API (9 Drivers)
+# 3. DRIVERS API (Drivers & Bus Assignment Sync)
 @app.route('/api/drivers', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def handle_drivers():
     conn = get_db_connection()
@@ -687,6 +736,11 @@ def handle_drivers():
         INSERT INTO drivers (name, phone, email, license_no, assigned_bus, experience_yrs)
         VALUES (?, ?, ?, ?, ?, ?)
         ''', (data['name'], data['phone'], data['email'], data['license_no'], data['assigned_bus'], data.get('experience_yrs', 5)))
+        
+        if data.get('assigned_bus'):
+            conn.execute("UPDATE buses SET driver_name = ?, driver_phone = ? WHERE bus_no = ?",
+                         (data['name'], data['phone'], data['assigned_bus']))
+
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Driver added successfully!'})

@@ -304,16 +304,7 @@
                             </div>
                             <div class="controls-row">
                                 <select id="student-bus-filter" class="form-select-sm" onchange="filterStudentsByBus()">
-                                    <option value="all">All 9 Buses</option>
-                                    <option value="1">Bus 1</option>
-                                    <option value="2">Bus 2</option>
-                                    <option value="3">Bus 3</option>
-                                    <option value="4">Bus 4</option>
-                                    <option value="5">Bus 5</option>
-                                    <option value="6">Bus 6</option>
-                                    <option value="7">Bus 7</option>
-                                    <option value="8">Bus 8</option>
-                                    <option value="9">Bus 9</option>
+                                    <option value="all">Loading Buses...</option>
                                 </select>
                                 <button class="btn-sm btn-export" onclick="exportStudentsCSV()">
                                     <i class="bi bi-download"></i> Export CSV
@@ -354,8 +345,8 @@
                     <div class="panel-card">
                         <div class="panel-header flex-between">
                             <div>
-                                <h2>Total Buses (9)</h2>
-                                <p class="text-muted">Overview of all 9 SVIT transport buses, assigned routes, drivers, and coordinators</p>
+                                <h2>Total Buses (<span id="buses-tab-count">9</span>)</h2>
+                                <p class="text-muted">Overview of all SVIT transport buses, assigned routes, drivers, and coordinators</p>
                             </div>
                             <button class="btn-primary-sm" onclick="switchAdminTab('tab-register-bus')">
                                 <i class="bi bi-plus-lg"></i> Register New Bus
@@ -388,9 +379,7 @@
                                         <th>NAME</th>
                                         <th>MOBILE</th>
                                         <th>EMAIL</th>
-                                        <th>LICENSE NO</th>
                                         <th>ASSIGNED BUS</th>
-                                        <th>EXPERIENCE</th>
                                         <th>ACTIONS</th>
                                     </tr>
                                 </thead>
@@ -422,7 +411,6 @@
                                         <th>FACULTY NAME</th>
                                         <th>MOBILE</th>
                                         <th>EMAIL</th>
-                                        <th>DEPARTMENT</th>
                                         <th>ASSIGNED BUS</th>
                                         <th>BUS ROUTE</th>
                                         <th>ACTIONS</th>
@@ -540,15 +528,7 @@
                                     <div class="form-group" id="bus-assignment-group">
                                         <label class="form-label">Assign Bus Number <span class="text-red">*</span></label>
                                         <select id="reg-bus-no" class="form-select" required>
-                                            <option value="1" selected>Bus 1 (Route 1 - Mallathahalli Cross)</option>
-                                            <option value="2">Bus 2 (Route 2 - Nagarbhavi BDA)</option>
-                                            <option value="3">Bus 3 (Route 3 - Vijayanagar TTMC)</option>
-                                            <option value="4">Bus 4 (Route 4 - Rajajinagar ESI)</option>
-                                            <option value="5">Bus 5 (Route 5 - Yeshwanthpur Metro)</option>
-                                            <option value="6">Bus 6 (Route 6 - Hebbal Flyover)</option>
-                                            <option value="7">Bus 7 (Route 7 - Yelahanka New Town)</option>
-                                            <option value="8">Bus 8 (Route 8 - Jayanagar 4th Block)</option>
-                                            <option value="9">Bus 9 (Route 9 - Banashankari TTMC)</option>
+                                            <option value="" disabled selected>Loading Buses...</option>
                                         </select>
                                     </div>
                                 </div>
@@ -770,19 +750,9 @@
                         <input type="email" id="edit-driver-email" class="form-control" required>
                     </div>
                 </div>
-                <div class="form-row-2">
-                    <div class="form-group">
-                        <label class="form-label">License No</label>
-                        <input type="text" id="edit-driver-license" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Assigned Bus</label>
-                        <input type="number" id="edit-driver-bus" class="form-control" min="1" required>
-                    </div>
-                </div>
                 <div class="form-group">
-                    <label class="form-label">Experience (Years)</label>
-                    <input type="number" id="edit-driver-exp" class="form-control" min="0">
+                    <label class="form-label">Assigned Bus</label>
+                    <input type="number" id="edit-driver-bus" class="form-control" min="1" required>
                 </div>
                 <div class="modal-footer-btns mt-4">
                     <button type="button" class="btn-secondary" onclick="closeEditDriverModal()">Cancel</button>
@@ -816,22 +786,9 @@
                         <input type="email" id="edit-faculty-email" class="form-control" required>
                     </div>
                 </div>
-                <div class="form-row-2">
-                    <div class="form-group">
-                        <label class="form-label">Department</label>
-                        <select id="edit-faculty-dept" class="form-select">
-                            <option>Computer Science</option>
-                            <option>Electronics & Comm</option>
-                            <option>Information Science</option>
-                            <option>Mechanical Engg</option>
-                            <option>Civil Engg</option>
-                            <option>AI & Data Science</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Assigned Bus</label>
-                        <input type="number" id="edit-faculty-bus" class="form-control" min="1" required>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Assigned Bus</label>
+                    <input type="number" id="edit-faculty-bus" class="form-control" min="1" required>
                 </div>
                 <div class="modal-footer-btns mt-4">
                     <button type="button" class="btn-secondary" onclick="closeEditFacultyModal()">Cancel</button>

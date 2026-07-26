@@ -808,10 +808,28 @@
             <div class="scanner-card">
                 <div class="card-header-kiosk">
                     <h2>
-                        <div class="live-dot"></div>
+                        <div class="live-dot" id="liveDot"></div>
                         <span data-i18n="live_qr_scanner">Live Camera QR Scanner</span>
                     </h2>
-                    <span style="font-size: 0.8rem; color: var(--muted-kiosk);">Auto-Detection Active</span>
+                    <span id="cameraStatusText" style="font-size: 0.8rem; color: #10b981; font-weight: 600;">Camera Active</span>
+                </div>
+
+                <!-- Camera Controls Toolbar -->
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                    <select id="cameraSelect" onchange="switchCamera(this.value)" style="flex: 1; background: var(--bg-kiosk); border: 1px solid var(--border-kiosk); color: var(--text-kiosk); padding: 6px 10px; border-radius: 8px; font-size: 0.82rem; outline: none; display: none;">
+                        <option value="">Select Camera Device...</option>
+                    </select>
+
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="restartCameraScanner()" class="demo-usn-chip" title="Restart Camera Stream" style="display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-arrows-rotate"></i> Restart Camera
+                        </button>
+
+                        <button type="button" onclick="document.getElementById('qrFileInput').click()" class="demo-usn-chip" title="Upload QR Code Image" style="display: flex; align-items: center; gap: 5px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4);">
+                            <i class="fa-solid fa-upload"></i> Upload QR Image
+                        </button>
+                        <input type="file" id="qrFileInput" accept="image/*" style="display: none;" onchange="handleQrFileUpload(event)">
+                    </div>
                 </div>
 
                 <!-- Camera Viewport Box -->
@@ -819,6 +837,10 @@
                     <div class="laser-line"></div>
                     <div class="scan-overlay-frame"></div>
                     <div id="qr-reader"></div>
+                </div>
+
+                <div id="cameraErrorBox" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; text-align: center;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> <span id="cameraErrMsg">Camera access failed or permission denied. Please use 'Upload QR Image' or Manual USN entry below.</span>
                 </div>
 
                 <p style="font-size: 0.85rem; color: var(--muted-kiosk); margin: -5px 0 0 0; text-align: center;" data-i18n="scan_pass_instruction">
@@ -1008,29 +1030,143 @@
             }
         }
 
-        // Start HTML5 QR Code Scanner
-        function startScanner() {
-            try {
-                html5QrCode = new Html5Qrcode("qr-reader");
-                const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+        let availableCameras = [];
+        let currentDeviceId = null;
 
-                html5QrCode.start(
-                    { facingMode: "environment" },
+        // Start HTML5 QR Code Scanner with dynamic sizing and camera enumeration
+        async function startScanner(deviceId = null) {
+            const errBox = document.getElementById('cameraErrorBox');
+            const statusText = document.getElementById('cameraStatusText');
+            if (errBox) errBox.style.display = 'none';
+
+            try {
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
+                } else if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+
+                // Dynamic qrbox to prevent viewport aspect-ratio crashes
+                const config = {
+                    fps: 15,
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                        const boxSize = Math.floor(minEdge * 0.75);
+                        return { width: Math.max(140, boxSize), height: Math.max(140, boxSize) };
+                    },
+                    aspectRatio: 1.333333
+                };
+
+                // Enumerate camera devices for dropdown selection
+                try {
+                    const devices = await Html5Qrcode.getCameras();
+                    if (devices && devices.length > 0) {
+                        availableCameras = devices;
+                        populateCameraDropdown(devices, deviceId);
+                    }
+                } catch (camErr) {
+                    console.log("Camera enumeration notice:", camErr);
+                }
+
+                const cameraConstraint = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" };
+
+                await html5QrCode.start(
+                    cameraConstraint,
                     config,
                     onScanSuccess
-                ).catch(err => {
-                    console.log("Rear camera init failed, attempting default camera:", err);
-                    html5QrCode.start(
+                ).then(() => {
+                    if (statusText) {
+                        statusText.textContent = "Camera Active";
+                        statusText.style.color = "#10b981";
+                    }
+                }).catch(async (err) => {
+                    console.warn("Primary camera start failed, attempting user camera fallback:", err);
+                    // Fallback to user facing camera
+                    await html5QrCode.start(
                         { facingMode: "user" },
                         config,
                         onScanSuccess
-                    ).catch(e => {
-                        console.log("Camera access error:", e);
+                    ).then(() => {
+                        if (statusText) {
+                            statusText.textContent = "Camera Active (User View)";
+                            statusText.style.color = "#10b981";
+                        }
+                    }).catch(e => {
+                        console.error("Camera access error:", e);
+                        if (statusText) {
+                            statusText.textContent = "Camera Unavailable";
+                            statusText.style.color = "#ef4444";
+                        }
+                        if (errBox) {
+                            errBox.style.display = 'block';
+                        }
                     });
                 });
             } catch (err) {
                 console.error("Html5Qrcode initialize error:", err);
+                if (statusText) {
+                    statusText.textContent = "Camera Unavailable";
+                    statusText.style.color = "#ef4444";
+                }
+                if (errBox) errBox.style.display = 'block';
             }
+        }
+
+        // Populate camera dropdown
+        function populateCameraDropdown(devices, selectedId) {
+            const selectEl = document.getElementById('cameraSelect');
+            if (!selectEl) return;
+            selectEl.innerHTML = '<option value="">Select Camera Device...</option>';
+            devices.forEach((dev, idx) => {
+                const opt = document.createElement('option');
+                opt.value = dev.id;
+                opt.textContent = dev.label || `Camera ${idx + 1}`;
+                if (selectedId === dev.id || (idx === 0 && !selectedId)) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+            selectEl.style.display = devices.length > 1 ? 'block' : 'none';
+        }
+
+        // Switch selected camera
+        function switchCamera(deviceId) {
+            if (!deviceId) return;
+            currentDeviceId = deviceId;
+            startScanner(deviceId);
+        }
+
+        // Restart Camera Scanner
+        function restartCameraScanner() {
+            startScanner(currentDeviceId);
+        }
+
+        // Handle QR Code Image Upload Scanning
+        function handleQrFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusText = document.getElementById('cameraStatusText');
+            if (statusText) statusText.textContent = "Scanning Uploaded Image...";
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+            }
+
+            html5QrCode.scanFile(file, true)
+                .then(qrCodeMessage => {
+                    if (statusText) {
+                        statusText.textContent = "Image Scanned Successfully!";
+                        statusText.style.color = "#10b981";
+                    }
+                    onScanSuccess(qrCodeMessage);
+                })
+                .catch(err => {
+                    console.error("File QR Scan error:", err);
+                    alert("Could not detect a clear QR Code in the uploaded image. Please try a clearer image or use Manual USN entry.");
+                    if (statusText) {
+                        statusText.textContent = "Camera Active";
+                        statusText.style.color = "#10b981";
+                    }
+                });
         }
 
         // Camera Scan Callback
@@ -1062,17 +1198,33 @@
             input.value = '';
         }
 
-        // Process Scan API Request
-        function processScan(scannedPayload) {
-            let usnPayload = scannedPayload;
-            if (typeof scannedPayload === 'string' && scannedPayload.trim().startsWith('{')) {
+        // Helper to extract USN from various QR code payload formats
+        function extractUsnFromPayload(scannedPayload) {
+            if (!scannedPayload) return '';
+            let text = String(scannedPayload).trim();
+
+            if (text.startsWith('{') && text.endsWith('}')) {
                 try {
-                    const parsed = JSON.parse(scannedPayload);
-                    if (parsed && parsed.usn) {
-                        usnPayload = parsed.usn;
+                    const parsed = JSON.parse(text);
+                    if (parsed && typeof parsed === 'object') {
+                        if (parsed.usn) return String(parsed.usn).trim();
+                        if (parsed.USN) return String(parsed.USN).trim();
                     }
                 } catch (e) {}
             }
+
+            // Regex match for college USN pattern (e.g. 1VA21CS010)
+            const usnMatch = text.match(/1[Vv][Aa]\d{2}[A-Za-z]{2,4}\d{3}/);
+            if (usnMatch) {
+                return usnMatch[0].toUpperCase();
+            }
+
+            return text.replace(/^usn[:=]\s*/i, '').trim();
+        }
+
+        // Process Scan API Request
+        function processScan(scannedPayload) {
+            const usnPayload = extractUsnFromPayload(scannedPayload);
 
             fetch('/api/scan-attendance', {
                 method: 'POST',
