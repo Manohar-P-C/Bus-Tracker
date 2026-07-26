@@ -876,6 +876,11 @@ def traccar_gps_receiver():
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     conn = get_db_connection()
+    bus = conn.execute("SELECT gps_active FROM buses WHERE bus_no = ?", (bus_no,)).fetchone()
+    if bus and bus['gps_active'] == 0:
+        conn.close()
+        return 'GPS_DISABLED', 200
+
     conn.execute("""
         UPDATE buses 
         SET lat = ?, lng = ?, speed = ?, heading = ?, status = 'On Route', last_updated = ?
@@ -885,6 +890,28 @@ def traccar_gps_receiver():
     conn.close()
 
     return 'OK', 200
+
+@app.route('/api/driver/toggle-gps', methods=['POST'])
+def toggle_driver_gps():
+    """
+    Toggles live GPS activation state (ON/OFF) for a bus from Driver Console.
+    """
+    data = request.get_json() or {}
+    raw_bus = data.get('bus_no')
+    try:
+        bus_no = int(raw_bus) if raw_bus else 9
+    except (ValueError, TypeError):
+        bus_no = 9
+
+    active = 1 if data.get('gps_active') else 0
+    status_text = 'On Route' if active else 'GPS Inactive'
+
+    conn = get_db_connection()
+    conn.execute("UPDATE buses SET gps_active = ?, status = ? WHERE bus_no = ?", (active, status_text, bus_no))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'bus_no': bus_no, 'gps_active': active, 'status': status_text})
 
 @app.route('/api/gps/update', methods=['POST'])
 def update_gps_location():

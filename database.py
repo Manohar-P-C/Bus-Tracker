@@ -118,6 +118,8 @@ def init_db():
         cursor.execute("ALTER TABLE buses ADD COLUMN heading REAL DEFAULT 0")
     if 'last_updated' not in cols:
         cursor.execute("ALTER TABLE buses ADD COLUMN last_updated TEXT")
+    if 'gps_active' not in cols:
+        cursor.execute("ALTER TABLE buses ADD COLUMN gps_active INTEGER DEFAULT 1")
     conn.commit()
 
     # Seed initial data if empty

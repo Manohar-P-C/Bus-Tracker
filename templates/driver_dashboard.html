@@ -587,6 +587,11 @@
         </div>
 
         <div class="topbar-right">
+            <!-- Traccar App Setup Button -->
+            <button class="tb-btn" onclick="openTraccarModal()" style="padding: 7px 12px; font-size: 0.8rem; display:flex; align-items:center; gap:6px; color:#60a5fa; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); border-radius:10px;">
+                <i class="fa-solid fa-mobile-screen-button"></i> <span>Tracker App Setup</span>
+            </button>
+
             <!-- Language Selector -->
             <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
                 <option value="en">EN</option>
@@ -810,9 +815,26 @@
                 stopGPSTracking();
             }
 
+            // Sync GPS state with server (so Traccar updates are allowed when ON)
+            fetch('/api/driver/toggle-gps', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bus_no: BUS_NO, gps_active: gpsActive })
+            }).then(r => r.json()).then(data => {
+                console.log("GPS State Synced with Server:", data);
+            }).catch(e => console.log('Toggle GPS sync:', e));
+
             // Re-apply current language
             const lang = localStorage.getItem('appLanguage') || 'en';
-            changeLanguage(lang);
+            if (typeof changeLanguage === 'function') changeLanguage(lang);
+        }
+
+        function openTraccarModal() {
+            document.getElementById('traccarModal').style.display = 'flex';
+        }
+
+        function closeTraccarModal() {
+            document.getElementById('traccarModal').style.display = 'none';
         }
 
         function startGPSTracking() {
@@ -830,6 +852,13 @@
                         // Speed km/h
                         const kmh = speed ? Math.round(speed * 3.6) : Math.floor(Math.random() * 15) + 25;
                         document.getElementById('speedVal').textContent = kmh;
+
+                        // Push location to server
+                        fetch('/api/gps/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ bus_no: BUS_NO, lat: lat, lng: lng, speed: kmh })
+                        }).catch(() => {});
                     },
                     (err) => {
                         console.log('Geolocation error, using simulation:', err.message);
@@ -876,6 +905,13 @@
 
                 totalDistance += 0.8;
                 document.getElementById('teleDistance').textContent = totalDistance.toFixed(1);
+
+                // Sync simulated location with backend for Bus 9
+                fetch('/api/gps/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bus_no: BUS_NO, lat: coord[0], lng: coord[1], speed: speed })
+                }).catch(() => {});
             }, 4000);
         }
 
@@ -918,5 +954,50 @@
             if (typeof changeLanguage === 'function') changeLanguage(savedLang);
         });
     </script>
+
+    <!-- ═══ TRACCAR CLIENT APP SETUP MODAL ═══ -->
+    <div id="traccarModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:20px;">
+        <div style="background:#18181b; border:1px solid rgba(255,255,255,0.15); border-radius:20px; max-width:480px; width:100%; padding:24px; color:#f4f4f5; box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <h3 style="font-size:1.1rem; font-weight:800; color:#3b82f6; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Traccar Client Mobile Setup
+                </h3>
+                <button onclick="closeTraccarModal()" style="background:transparent; border:none; color:#a1a1aa; font-size:1.2rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <p style="font-size:0.85rem; color:#a1a1aa; margin-bottom:14px; line-height:1.4;">
+                Configure the <strong>Tracker Client</strong> app on your smartphone to send live phone GPS telemetry for <strong>Bus <span id="mBusNo">9</span></strong>:
+            </p>
+
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px; font-size:0.82rem; margin-bottom:16px; display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">1. Service Status:</span>
+                    <strong style="color:#22c55e;">Turn ON Toggle</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; flex-direction:column; gap:4px;">
+                    <span style="color:#a1a1aa;">2. Server URL:</span>
+                    <code style="background:#000; padding:4px 8px; border-radius:6px; color:#60a5fa; word-break:break-all;">http://YOUR_SERVER_IP:5000/api/gps/traccar</code>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">3. Device Identifier:</span>
+                    <strong style="color:#f59e0b;">bus9</strong> (or <strong>9</strong>)
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">4. Location Provider:</span>
+                    <strong style="color:#f4f4f5;">GPS / High Accuracy</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#a1a1aa;">5. Frequency:</span>
+                    <strong style="color:#f4f4f5;">5 seconds</strong>
+                </div>
+            </div>
+
+            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:10px 12px; font-size:0.78rem; color:#93c5fd; margin-bottom:18px;">
+                💡 <strong>Important:</strong> Click <strong>START GPS</strong> on the Driver Console first to allow live location updates on the server.
+            </div>
+
+            <button onclick="closeTraccarModal()" style="width:100%; padding:12px; border-radius:12px; background:#3b82f6; color:#fff; border:none; font-weight:700; font-size:0.9rem; cursor:pointer;">Got It!</button>
+        </div>
+    </div>
 </body>
 </html>
