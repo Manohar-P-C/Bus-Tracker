@@ -134,6 +134,8 @@ def login():
         target_url = url_for('driver_dashboard')
     elif user_role == 'scanner':
         target_url = url_for('bus_qr_kiosk')
+    elif user_role == 'faculty':
+        target_url = url_for('faculty_dashboard')
     else:
         target_url = url_for('index', role=user_role)
 
@@ -265,6 +267,144 @@ def parent_dashboard():
                            faculty=faculty_dict, 
                            attendance=attendance_list, 
                            notifications=notifications)
+
+# ----------------- FACULTY DASHBOARD -----------------
+
+@app.route('/faculty')
+@app.route('/faculty/dashboard')
+def faculty_dashboard():
+    user = session.get('user')
+    if not user or user.get('role') != 'faculty':
+        return redirect(url_for('index', role='faculty'))
+
+    conn = get_db_connection()
+
+    email = user.get('email', '').lower()
+    
+    # Determine assigned bus for this faculty (Bus 1 to 9)
+    import re
+    bus_no = 4  # Default to Bus 4
+    m = re.search(r'faculty(\d+)', email)
+    if m:
+        bus_no = int(m.group(1))
+    else:
+        b = conn.execute("SELECT bus_no FROM buses WHERE LOWER(faculty_coordinator) LIKE ?", (f"%{user.get('name', '').lower()}%",)).fetchone()
+        if b:
+            bus_no = b['bus_no']
+
+    bus = conn.execute("SELECT * FROM buses WHERE bus_no = ?", (bus_no,)).fetchone()
+    bus_dict = dict(bus) if bus else {
+        'bus_no': bus_no,
+        'reg_no': f'KA-04-F-200{bus_no}',
+        'capacity': 40,
+        'driver_name': 'Ramesh M.',
+        'driver_phone': '98765 11123',
+        'faculty_coordinator': user.get('name', 'Dr. Kavya M.'),
+        'route_name': f'Route {bus_no}',
+        'status': 'On Route',
+        'lat': 13.0420,
+        'lng': 77.6200
+    }
+
+    driver = conn.execute("SELECT * FROM drivers WHERE assigned_bus = ?", (bus_no,)).fetchone()
+    driver_dict = dict(driver) if driver else {
+        'name': bus_dict.get('driver_name', 'Ramesh M.'),
+        'phone': bus_dict.get('driver_phone', '98765 11123'),
+        'license_no': f'KA04-2019-800{bus_no}',
+        'experience_yrs': 8
+    }
+
+    route = conn.execute("SELECT * FROM routes WHERE bus_no = ?", (bus_no,)).fetchone()
+    route_dict = dict(route) if route else {}
+    if route_dict and 'stops_json' in route_dict:
+        import json
+        try:
+            route_dict['stops'] = json.loads(route_dict['stops_json'])
+        except:
+            route_dict['stops'] = []
+
+    # Fetch students on this particular bus
+    students = conn.execute("SELECT * FROM students WHERE bus_no = ? ORDER BY full_name ASC", (bus_no,)).fetchall()
+    student_list = []
+    
+    if not students:
+        sample_students = [
+            {"id": 1, "full_name": "Arjun Kumar", "usn": "1SV22CS015", "department": "CSE", "parent_name": "Ramesh Kumar", "parent_contact": "98765 43210", "attendance_pct": 95, "status": "Present"},
+            {"id": 2, "full_name": "Pooja Sharma", "usn": "1SV22CS042", "department": "CSE", "parent_name": "Sunita Sharma", "parent_contact": "98450 23451", "attendance_pct": 90, "status": "Present"},
+            {"id": 3, "full_name": "Manoj Kumar", "usn": "1SV22CS027", "department": "CSE", "parent_name": "Mahesh Kumar", "parent_contact": "99000 11223", "attendance_pct": 75, "status": "Absent"},
+            {"id": 4, "full_name": "Sneha Patil", "usn": "1SV22CS067", "department": "CSE", "parent_name": "Shankar Patil", "parent_contact": "99876 55432", "attendance_pct": 90, "status": "Present"},
+            {"id": 5, "full_name": "Bhavya Rao", "usn": "1SV22CS019", "department": "CSE", "parent_name": "Ganesh Rao", "parent_contact": "98440 12389", "attendance_pct": 88, "status": "Present"},
+            {"id": 6, "full_name": "Chetan Hegde", "usn": "1SV22CS022", "department": "CSE", "parent_name": "Venkatesh Hegde", "parent_contact": "97411 88990", "attendance_pct": 92, "status": "Present"},
+            {"id": 7, "full_name": "Deepika Deshmukh", "usn": "1SV22CS031", "department": "CSE", "parent_name": "Anil Deshmukh", "parent_contact": "96321 44556", "attendance_pct": 96, "status": "Present"},
+            {"id": 8, "full_name": "Farhan Khan", "usn": "1SV22CS038", "department": "CSE", "parent_name": "Tariq Khan", "parent_contact": "95380 77112", "attendance_pct": 84, "status": "Present"},
+            {"id": 9, "full_name": "Harini Nair", "usn": "1SV22CS045", "department": "CSE", "parent_name": "Rajan Nair", "parent_contact": "94480 33221", "attendance_pct": 90, "status": "Present"},
+            {"id": 10, "full_name": "Karthik Gowda", "usn": "1SV22CS052", "department": "CSE", "parent_name": "Suresh Gowda", "parent_contact": "98451 99001", "attendance_pct": 89, "status": "Present"}
+        ]
+        student_list = sample_students
+    else:
+        for s in students:
+            s_dict = dict(s)
+            if 'department' not in s_dict or not s_dict['department']:
+                s_dict['department'] = 'CSE'
+            if 'parent_name' not in s_dict or not s_dict['parent_name']:
+                s_dict['parent_name'] = 'Parent'
+            if 'parent_contact' not in s_dict or not s_dict['parent_contact']:
+                s_dict['parent_contact'] = '98765 43210'
+            student_list.append(s_dict)
+
+    total_students = len(student_list)
+    present_today = sum(1 for s in student_list if s.get('status', 'Present') == 'Present')
+    absent_today = total_students - present_today
+    attendance_rate = round((present_today / total_students) * 100) if total_students > 0 else 90
+
+    admin_contacts = [
+        {"title": "Principal - SVIT", "phone": "080-28468191", "email": "principal@saividya.ac.in", "icon": "bi-building-fill"},
+        {"title": "Transport Administrator", "phone": "98450 12345", "email": "transport@saividya.ac.in", "icon": "bi-person-badge-fill"}
+    ]
+
+    sos_alerts = conn.execute("SELECT * FROM sos_alerts WHERE bus_no = ? ORDER BY id DESC", (bus_no,)).fetchall()
+    sos_list = [dict(a) for a in sos_alerts]
+    
+    if not sos_list:
+        sos_list = [
+            {
+                "id": 1,
+                "student_name": "Pooja Sharma",
+                "usn": "1SV22CS042",
+                "type": "Medical Emergency",
+                "priority": "High Priority",
+                "bus_location": "5th Block Koramangala",
+                "time": "2 min ago",
+                "phone": "98450 23451"
+            },
+            {
+                "id": 2,
+                "student_name": "Manoj Kumar",
+                "usn": "1SV22CS027",
+                "type": "Not Feeling Well",
+                "priority": "Medium Priority",
+                "bus_location": "HSR Layout",
+                "time": "15 min ago",
+                "phone": "99000 11223"
+            }
+        ]
+
+    conn.close()
+
+    return render_template(
+        'faculty.html',
+        user=user,
+        bus=bus_dict,
+        driver=driver_dict,
+        route=route_dict,
+        students=student_list,
+        total_students=total_students,
+        present_today=present_today,
+        absent_today=absent_today,
+        attendance_rate=attendance_rate,
+        admin_contacts=admin_contacts,
+        sos_alerts=sos_list
+    )
 
 @app.route('/student')
 @app.route('/student/dashboard')

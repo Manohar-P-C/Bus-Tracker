@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard - SVIT Smart Bus Tracker</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Leaflet.js Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/faculty.css') }}">
+</head>
+<body>
+
+    <div class="faculty-wrapper">
+        <!-- ==========================================
+             LEFT SIDEBAR NAVIGATION
+             ========================================== -->
+        <aside class="faculty-sidebar" id="faculty-sidebar">
+            <div class="sidebar-header">
+                <div class="brand-badge">
+                    <div class="brand-icon">
+                        <i class="bi bi-bus-front-fill"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1 class="brand-title">SVIT</h1>
+                        <span class="brand-subtitle">Smart Bus Tracker</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span data-i18n="nav_dashboard">Dashboard</span>
+                </button>
+
+                <button class="nav-item" data-tab="tracking">
+                    <i class="bi bi-geo-alt-fill"></i>
+                    <span data-i18n="nav_live_tracking">Live Bus Tracking</span>
+                </button>
+
+                <button class="nav-item" data-tab="students">
+                    <i class="bi bi-people-fill"></i>
+                    <span data-i18n="nav_students">Students</span>
+                </button>
+
+                <button class="nav-item" data-tab="attendance">
+                    <i class="bi bi-check-square-fill"></i>
+                    <span data-i18n="nav_attendance">Attendance</span>
+                </button>
+
+                <button class="nav-item" data-tab="parents">
+                    <i class="bi bi-person-lines-fill"></i>
+                    <span data-i18n="nav_parent_contacts">Parent Contacts</span>
+                </button>
+
+                <button class="nav-item" data-tab="admin">
+                    <i class="bi bi-building-fill"></i>
+                    <span data-i18n="nav_admin_contacts">Admin Contacts</span>
+                </button>
+
+                <button class="nav-item" data-tab="sos">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span data-i18n="nav_sos">SOS Alerts</span>
+                    <span class="badge-pill bg-red">2</span>
+                </button>
+
+                <button class="nav-item" data-tab="settings">
+                    <i class="bi bi-gear-fill"></i>
+                    <span data-i18n="nav_settings">Settings</span>
+                </button>
+
+                <a href="{{ url_for('logout') }}" class="nav-item logout-item">
+                    <i class="bi bi-box-arrow-left"></i>
+                    <span data-i18n="nav_logout">Logout</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Bottom Card: Assigned Bus Details -->
+            <div class="sidebar-bus-card">
+                <div class="s-bus-header">
+                    <div class="s-bus-icon">
+                        <i class="bi bi-bus-front-fill"></i>
+                    </div>
+                    <div class="s-bus-meta">
+                        <span class="s-bus-title">Bus {{ bus.bus_no if bus else 4 }}</span>
+                        <span class="s-bus-sub">{{ route.route_name if route else 'Route 4' }}</span>
+                    </div>
+                </div>
+                <div class="s-bus-driver">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span>Driver: <strong>{{ driver.name if driver else 'Ramesh M.' }}</strong></span>
+                </div>
+                <button type="button" class="btn-sidebar-action" onclick="alert('Driver Contact: +91 {{ driver.phone if driver else '98765 11123' }}')">
+                    View Driver Profile
+                </button>
+            </div>
+        </aside>
+
+        <!-- ==========================================
+             MAIN CONTENT AREA & TOPBAR
+             ========================================== -->
+        <main class="faculty-main">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle-btn" onclick="document.getElementById('faculty-sidebar').classList.toggle('open')">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div>
+                        <h2 class="welcome-title">Faculty Dashboard</h2>
+                        <p class="welcome-sub">Monitor your assigned bus and students</p>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Search Input -->
+                    <div class="search-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="faculty-search-input" placeholder="Search student by name or USN...">
+                    </div>
+
+                    <!-- Notification Bell -->
+                    <button class="topbar-icon-btn" title="Notifications" onclick="document.querySelector('[data-tab=\'sos\']').click()">
+                        <i class="bi bi-bell-fill"></i>
+                        <span class="notification-dot">3</span>
+                    </button>
+
+                    <!-- Language Selector -->
+                    <div class="language-selector-wrapper">
+                        <i class="bi bi-globe lang-icon"></i>
+                        <select id="faculty-lang-select" class="lang-dropdown-select">
+                            <option value="en">English</option>
+                            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                            <option value="hi">हिंदी (Hindi)</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                            <option value="ml">മലയാളം (Malayalam)</option>
+                        </select>
+                    </div>
+
+                    <!-- Dark Mode Toggle -->
+                    <button class="topbar-icon-btn" id="theme-toggle-btn" title="Toggle Theme">
+                        <i class="bi bi-moon-stars-fill"></i>
+                    </button>
+
+                    <div class="topbar-divider"></div>
+
+                    <!-- Account Avatar Header -->
+                    <div class="account-btn">
+                        <div class="account-avatar-icon">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                        <div class="account-info-text">
+                            <span class="account-name">{{ user.name if user else 'Dr. Kavya M.' }}</span>
+                            <span class="account-role">Faculty Coordinator</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Container -->
+            <div class="content-container">
+
+                <!-- ==========================================
+                     TAB 1: MAIN DASHBOARD PANEL
+                     ========================================== -->
+                <div class="tab-panel active" id="tab-dashboard">
+                    
+                    <!-- 5 STAT CARDS ROW (MATCHING MOCKUP) -->
+                    <div class="stats-grid-5">
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper bg-blue-soft">
+                                <i class="bi bi-bus-front-fill"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Assigned Bus</span>
+                                <span class="stat-value">Bus {{ bus.bus_no if bus else 4 }}</span>
+                                <span class="stat-sub">Route {{ bus.bus_no if bus else 4 }}</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper bg-purple-soft">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total Students</span>
+                                <span class="stat-value">{{ total_students }}</span>
+                                <span class="stat-sub">On this bus</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper bg-green-soft">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Present Today</span>
+                                <span class="stat-value">{{ present_today }}</span>
+                                <span class="stat-sub">{{ attendance_rate }}%</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper bg-red-soft">
+                                <i class="bi bi-x-circle-fill"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Absent Today</span>
+                                <span class="stat-value">{{ absent_today }}</span>
+                                <span class="stat-sub">{{ 100 - attendance_rate }}%</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon-wrapper bg-amber-soft">
+                                <i class="bi bi-speedometer2"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Bus Status</span>
+                                <span class="stat-value status-badge-pill pill-green">On Route</span>
+                                <span class="stat-sub">Running</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MAIN DASHBOARD GRID (MAP & RIGHT COLUMN CARDS) -->
+                    <div class="faculty-grid-main">
+                        <!-- LEFT: LIVE BUS TRACKING MAP CARD -->
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <h3>
+                                    <i class="bi bi-geo-alt-fill text-primary"></i> 
+                                    Live Bus Tracking – Bus {{ bus.bus_no if bus else 4 }}
+                                </h3>
+                                <div class="pulse-badge">
+                                    <span class="pulse-dot"></span> Live
+                                </div>
+                            </div>
+                            <div class="map-wrapper">
+                                <div id="faculty-bus-map"></div>
+
+                                <!-- Floating Telemetry Box -->
+                                <div class="telemetry-card-overlay">
+                                    <div class="t-header">
+                                        <span class="t-bus-no">Bus {{ bus.bus_no if bus else 4 }}</span>
+                                        <span class="status-badge-pill pill-blue">On Route</span>
+                                    </div>
+                                    <div class="t-grid">
+                                        <div class="t-item">
+                                            <i class="bi bi-geo-alt-fill t-icon"></i>
+                                            <div class="t-details">
+                                                <span class="t-label">Current Stop</span>
+                                                <span class="t-val">5th Block Koramangala</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="t-item">
+                                            <i class="bi bi-signpost-split-fill t-icon"></i>
+                                            <div class="t-details">
+                                                <span class="t-label">Next Stop</span>
+                                                <span class="t-val">Silk Board</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="t-item">
+                                            <i class="bi bi-clock-history t-icon"></i>
+                                            <div class="t-details">
+                                                <span class="t-label">ETA</span>
+                                                <span class="t-val">6 min</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="t-item">
+                                            <i class="bi bi-rulers t-icon"></i>
+                                            <div class="t-details">
+                                                <span class="t-label">Distance Remaining</span>
+                                                <span class="t-val">2.4 km</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="t-item">
+                                            <i class="bi bi-speedometer t-icon"></i>
+                                            <div class="t-details">
+                                                <span class="t-label">Speed</span>
+                                                <span class="t-val">32 km/h</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="btn-full-blue" onclick="document.querySelector('[data-tab=\'tracking\']').click()">
+                                        View Full Route
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN STACK: ADMIN CONTACTS & SOS ALERTS -->
+                        <div class="right-col-stack">
+                            <!-- CARD 1: ADMIN CONTACT INFORMATION -->
+                            <div class="panel-card">
+                                <div class="panel-header">
+                                    <h3><i class="bi bi-building-fill text-primary"></i> Admin Contact Information</h3>
+                                </div>
+                                <div class="p-3">
+                                    {% for admin in admin_contacts %}
+                                    <div class="admin-card-item">
+                                        <div class="admin-left">
+                                            <div class="admin-icon-box">
+                                                <i class="bi {{ admin.icon }}"></i>
+                                            </div>
+                                            <div class="admin-details">
+                                                <span class="admin-name">{{ admin.title }}</span>
+                                                <span class="admin-sub"><i class="bi bi-telephone-fill"></i> {{ admin.phone }}</span>
+                                                <span class="admin-sub"><i class="bi bi-envelope-fill"></i> {{ admin.email }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="admin-actions">
+                                            <a href="tel:{{ admin.phone }}" class="btn-action-sm btn-green-soft"><i class="bi bi-telephone-fill"></i> Call</a>
+                                            <a href="mailto:{{ admin.email }}" class="btn-action-sm btn-blue-soft"><i class="bi bi-envelope-fill"></i> Email</a>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- CARD 2: SOS ALERTS (2) -->
+                            <div class="panel-card">
+                                <div class="panel-header">
+                                    <h3><i class="bi bi-exclamation-triangle-fill text-danger"></i> SOS Alerts ({{ sos_alerts|length }})</h3>
+                                    <button class="btn-action-sm btn-blue-soft" onclick="document.querySelector('[data-tab=\'sos\']').click()">View All</button>
+                                </div>
+                                <div class="p-3">
+                                    {% for sos in sos_alerts %}
+                                    <div class="sos-card-item {% if 'Medical' not in sos.type %}medium{% endif %}">
+                                        <div class="sos-header-row">
+                                            <span class="sos-student-name"><i class="bi bi-exclamation-circle-fill"></i> {{ sos.student_name }} (USN: {{ sos.usn }})</span>
+                                            <span class="sos-priority-badge {% if 'Medical' in sos.type %}high{% else %}medium{% endif %}">{{ sos.priority }}</span>
+                                        </div>
+                                        <span class="sos-sub-text"><strong>{{ sos.type }}</strong> • Bus Location: {{ sos.bus_location }}</span>
+                                        <div class="sos-footer-row">
+                                            <span class="sos-time"><i class="bi bi-clock-history"></i> {{ sos.time }}</span>
+                                            <a href="tel:{{ sos.phone }}" class="btn-call-student"><i class="bi bi-telephone-fill"></i> Call Student</a>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MIDDLE ROW: ATTENDANCE & QUICK ACTIONS CARDS -->
+                    <div class="middle-grid-3">
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <h3><i class="bi bi-pie-chart-fill text-primary"></i> Attendance Summary <small class="text-muted">(This Month)</small></h3>
+                            </div>
+                            <div class="attendance-chart-card">
+                                <div class="donut-wrapper">
+                                    <svg class="donut-svg" viewBox="0 0 36 36">
+                                        <path class="donut-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="donut-fill" stroke-dasharray="{{ attendance_rate }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                    <div class="donut-text-center">{{ attendance_rate }}%</div>
+                                </div>
+                                <div class="attendance-stats-list">
+                                    <div class="att-row"><span class="att-lbl">Present Days:</span> <span class="att-val text-success">23</span></div>
+                                    <div class="att-row"><span class="att-lbl">Absent Days:</span> <span class="att-val text-danger">2</span></div>
+                                    <div class="att-row"><span class="att-lbl">Total Classes:</span> <span class="att-val">25</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <h3><i class="bi bi-bar-chart-line-fill text-primary"></i> Today's Attendance Overview</h3>
+                            </div>
+                            <div class="p-4">
+                                <div class="d-flex align-items-center justify-content-around mb-3">
+                                    <div class="text-center">
+                                        <i class="bi bi-check-circle-fill text-success" style="font-size:1.8rem;"></i>
+                                        <div class="mt-1"><strong>Present:</strong> {{ present_today }}</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <i class="bi bi-x-circle-fill text-danger" style="font-size:1.8rem;"></i>
+                                        <div class="mt-1"><strong>Absent:</strong> {{ absent_today }}</div>
+                                    </div>
+                                </div>
+                                <div class="progress-bar-sm w-100" style="height:10px;">
+                                    <div class="progress-fill" style="width: {{ attendance_rate }}%;"></div>
+                                </div>
+                                <div class="text-end mt-2" style="font-size:0.75rem; font-weight:700; color:var(--accent-green);">{{ attendance_rate }}% Boarded</div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-header">
+                                <h3><i class="bi bi-lightning-charge-fill text-primary"></i> Quick Actions</h3>
+                            </div>
+                            <div class="quick-actions-grid">
+                                <a href="#" class="quick-action-item" onclick="document.querySelector('[data-tab=\'students\']').click(); return false;">
+                                    <i class="bi bi-people-fill qa-icon"></i>
+                                    <span class="qa-title">Student List</span>
+                                    <span class="qa-sub">View all students</span>
+                                </a>
+
+                                <a href="#" class="quick-action-item" onclick="document.querySelector('[data-tab=\'attendance\']').click(); return false;">
+                                    <i class="bi bi-file-earmark-text-fill qa-icon"></i>
+                                    <span class="qa-title">Attendance Report</span>
+                                    <span class="qa-sub">Daily / Monthly</span>
+                                </a>
+
+                                <a href="#" class="quick-action-item" onclick="document.querySelector('[data-tab=\'parents\']').click(); return false;">
+                                    <i class="bi bi-telephone-fill qa-icon"></i>
+                                    <span class="qa-title">Parent Contacts</span>
+                                    <span class="qa-sub">Call / Message</span>
+                                </a>
+
+                                <a href="#" class="quick-action-item" onclick="document.querySelector('[data-tab=\'tracking\']').click(); return false;">
+                                    <i class="bi bi-map-fill qa-icon"></i>
+                                    <span class="qa-title">Bus Route</span>
+                                    <span class="qa-sub">View Route Details</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM TABLE: STUDENTS ON PARTICULAR BUS -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3><i class="bi bi-table text-primary"></i> Students on Bus {{ bus.bus_no if bus else 4 }}</h3>
+                            <button class="btn-action-sm btn-blue-soft" onclick="document.querySelector('[data-tab=\'students\']').click()">View All Students</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="faculty-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>USN</th>
+                                        <th>Department</th>
+                                        <th>Parent Name</th>
+                                        <th>Parent Mobile</th>
+                                        <th>Attendance %</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="students-table-body">
+                                    {% for std in students %}
+                                    <tr data-name="{{ std.full_name|lower }}" data-usn="{{ std.usn|lower }}" data-parent="{{ std.parent_name|lower }}">
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <div class="std-name-cell">
+                                                <div class="std-icon-badge">
+                                                    <i class="bi bi-person-fill"></i>
+                                                </div>
+                                                <span>{{ std.full_name }}</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="usn-badge">{{ std.usn }}</span></td>
+                                        <td>{{ std.department }}</td>
+                                        <td>{{ std.parent_name }}</td>
+                                        <td><strong>+91 {{ std.parent_contact }}</strong></td>
+                                        <td>
+                                            <div class="progress-bar-sm">
+                                                <div class="progress-fill" style="width: {{ std.attendance_pct }}%;"></div>
+                                            </div>
+                                            <strong>{{ std.attendance_pct }}%</strong>
+                                        </td>
+                                        <td>
+                                            {% if std.status == 'Present' %}
+                                            <span class="status-badge-pill pill-green">Present</span>
+                                            {% else %}
+                                            <span class="status-badge-pill pill-red" style="background-color:var(--accent-red-light); color:var(--accent-red);">Absent</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="table-action-btns">
+                                                <a href="tel:{{ std.parent_contact }}" class="btn-tbl-icon" title="Call Parent"><i class="bi bi-telephone-fill"></i></a>
+                                                <a href="mailto:parent_{{ std.usn|lower }}@gmail.com" class="btn-tbl-icon" title="Email Parent"><i class="bi bi-envelope-fill"></i></a>
+                                                <button type="button" class="btn-tbl-icon" title="View Pass" onclick="alert('Viewing Bus Pass for {{ std.full_name }} (USN: {{ std.usn }})')"><i class="bi bi-qr-code"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 2: LIVE BUS TRACKING TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-tracking">
+                    <div class="panel-card p-4">
+                        <h2>Assigned Bus Live Location – Bus {{ bus.bus_no if bus else 4 }}</h2>
+                        <p class="text-muted mb-3">Route: {{ route.route_name if route else 'Silk Board to SVIT Campus' }}</p>
+                        <div style="height:550px; border-radius:12px; overflow:hidden;">
+                            <div id="full-faculty-map" style="width:100%; height:100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 3: STUDENTS TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-students">
+                    <div class="panel-card p-4">
+                        <h2>All Registered Students on Bus {{ bus.bus_no if bus else 4 }}</h2>
+                        <p class="text-muted mb-4">Complete student list with parent details and attendance percentage</p>
+                        <div class="table-responsive">
+                            <table class="faculty-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student Name</th>
+                                        <th>USN</th>
+                                        <th>Dept</th>
+                                        <th>Parent Name</th>
+                                        <th>Parent Mobile</th>
+                                        <th>Attendance %</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for std in students %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td><strong>{{ std.full_name }}</strong></td>
+                                        <td>{{ std.usn }}</td>
+                                        <td>{{ std.department }}</td>
+                                        <td>{{ std.parent_name }}</td>
+                                        <td>+91 {{ std.parent_contact }}</td>
+                                        <td><strong>{{ std.attendance_pct }}%</strong></td>
+                                        <td>
+                                            <a href="tel:{{ std.parent_contact }}" class="btn-action-sm btn-green-soft"><i class="bi bi-telephone-fill"></i> Call Parent</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 4: ATTENDANCE TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-attendance">
+                    <div class="panel-card p-4">
+                        <h2>Bus Attendance Log & Monthly Reports</h2>
+                        <p class="text-muted mb-3">Daily QR scan attendance logs for Bus {{ bus.bus_no if bus else 4 }}</p>
+                        <div class="alert alert-info p-3 mb-4" style="background-color:var(--primary-blue-light); border-radius:12px;">
+                            <i class="bi bi-info-circle-fill text-primary"></i> <strong>Today's Boarding Rate:</strong> {{ attendance_rate }}% of assigned students scanned their QR pass.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 5: PARENT CONTACTS TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-parents">
+                    <div class="panel-card p-4">
+                        <h2>Parent Contacts Directory</h2>
+                        <p class="text-muted mb-4">Direct communication channels for parents of students on Bus {{ bus.bus_no if bus else 4 }}</p>
+                        <div class="row" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+                            {% for std in students %}
+                            <div style="border:1px solid var(--border-color); border-radius:12px; padding:16px; background-color:var(--bg-main); display:flex; align-items:center; justify-content:space-between;">
+                                <div>
+                                    <strong style="font-size:1rem;">{{ std.parent_name }}</strong>
+                                    <div style="font-size:0.8rem; color:var(--text-muted);">Parent of {{ std.full_name }} ({{ std.usn }})</div>
+                                    <div style="font-size:0.85rem; font-weight:700; color:var(--primary-blue); margin-top:4px;">+91 {{ std.parent_contact }}</div>
+                                </div>
+                                <a href="tel:{{ std.parent_contact }}" class="btn-action-sm btn-green-soft"><i class="bi bi-telephone-fill"></i> Call</a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 6: ADMIN CONTACTS TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-admin">
+                    <div class="panel-card p-4">
+                        <h2>College Administration Contacts</h2>
+                        <p class="text-muted mb-4">Official contact details for SVIT Transport Office & Principal</p>
+                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px;">
+                            {% for admin in admin_contacts %}
+                            <div style="border:1px solid var(--border-color); border-radius:12px; padding:20px; background-color:var(--bg-main);">
+                                <h3 style="font-size:1.1rem; margin-bottom:8px;">{{ admin.title }}</h3>
+                                <p style="font-size:0.9rem; margin-bottom:4px;"><i class="bi bi-telephone-fill text-primary"></i> <strong>Phone:</strong> {{ admin.phone }}</p>
+                                <p style="font-size:0.9rem; margin-bottom:16px;"><i class="bi bi-envelope-fill text-primary"></i> <strong>Email:</strong> {{ admin.email }}</p>
+                                <div style="display:flex; gap:10px;">
+                                    <a href="tel:{{ admin.phone }}" class="btn-action-sm btn-green-soft"><i class="bi bi-telephone-fill"></i> Call Now</a>
+                                    <a href="mailto:{{ admin.email }}" class="btn-action-sm btn-blue-soft"><i class="bi bi-envelope-fill"></i> Send Email</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 7: SOS ALERTS TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-sos">
+                    <div class="panel-card p-4">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                            <div>
+                                <h2>SOS Emergency Management</h2>
+                                <p class="text-muted">Real-time emergency alerts triggered on Bus {{ bus.bus_no if bus else 4 }}</p>
+                            </div>
+                            <button class="btn-action-sm" style="background-color:var(--accent-red); color:#fff; padding:10px 16px; font-weight:700;" onclick="triggerFacultySOS()">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Dispatch Faculty SOS
+                            </button>
+                        </div>
+
+                        {% for sos in sos_alerts %}
+                        <div class="sos-card-item mb-3" style="padding:16px;">
+                            <div class="sos-header-row">
+                                <span class="sos-student-name" style="font-size:1rem;"><i class="bi bi-exclamation-circle-fill"></i> {{ sos.student_name }} (USN: {{ sos.usn }})</span>
+                                <span class="sos-priority-badge high">{{ sos.priority }}</span>
+                            </div>
+                            <p style="margin:8px 0; font-size:0.9rem;"><strong>Alert Type:</strong> {{ sos.type }} • <strong>Location:</strong> {{ sos.bus_location }}</p>
+                            <div class="sos-footer-row">
+                                <span class="sos-time"><i class="bi bi-clock-history"></i> {{ sos.time }}</span>
+                                <a href="tel:{{ sos.phone }}" class="btn-call-student"><i class="bi bi-telephone-fill"></i> Call Student Immediately</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     TAB 8: SETTINGS TAB
+                     ========================================== -->
+                <div class="tab-panel" id="tab-settings">
+                    <div class="panel-card p-4" style="max-width:600px; margin:0 auto;">
+                        <h2>Faculty Account Settings</h2>
+                        <p class="text-muted mb-4">Manage your coordinator profile and notifications</p>
+                        <form onsubmit="alert('Settings saved successfully!'); return false;">
+                            <div class="mb-3">
+                                <label style="font-weight:600; font-size:0.85rem;">Faculty Name</label>
+                                <input type="text" class="form-control" value="{{ user.name if user else 'Dr. Kavya M.' }}" readonly style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-main); color:var(--text-primary); margin-top:4px;">
+                            </div>
+                            <div class="mb-3">
+                                <label style="font-weight:600; font-size:0.85rem;">Email Address</label>
+                                <input type="email" class="form-control" value="{{ user.email if user else 'faculty4@saividya.ac.in' }}" readonly style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-main); color:var(--text-primary); margin-top:4px;">
+                            </div>
+                            <button type="submit" class="btn-full-blue" style="margin-top:16px;">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <footer style="padding: 16px 28px; text-align: center; font-size: 0.78rem; color: var(--text-muted); border-top: 1px solid var(--border-color); margin-top: auto;">
+                © 2025 SVIT Smart Bus Tracker. All rights reserved. <span style="float: right;">Version 1.0.0</span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Inject Flask Data to JS -->
+    <script>
+        window.FACULTY_BUS_NO = parseInt("{{ bus.bus_no if bus else 4 }}", 10);
+        window.FACULTY_BUS_LAT = parseFloat("{{ bus.lat if bus and bus.lat else 12.9352 }}");
+        window.FACULTY_BUS_LNG = parseFloat("{{ bus.lng if bus and bus.lng else 77.6245 }}");
+    </script>
+
+    <!-- Custom Scripts -->
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/faculty.js') }}"></script>
+</body>
+</html>
