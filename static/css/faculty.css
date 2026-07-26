@@ -433,7 +433,11 @@ body {
     background-color: var(--border-color);
 }
 
-/* Faculty Account Badge Header */
+/* Faculty Account Badge Header & Dropdown */
+.account-dropdown-wrapper {
+    position: relative;
+}
+
 .account-btn {
     display: flex;
     align-items: center;
@@ -441,8 +445,13 @@ body {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 6px 10px;
     border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.account-btn:hover {
+    background-color: var(--primary-blue-light);
 }
 
 .account-avatar-icon {
@@ -471,6 +480,86 @@ body {
 .account-role {
     font-size: 0.72rem;
     color: var(--text-muted);
+}
+
+.account-arrow {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.account-menu {
+    position: absolute;
+    right: 0;
+    top: 52px;
+    width: 220px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    z-index: 200;
+}
+
+.account-menu.show {
+    display: flex;
+}
+
+.menu-header-info {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-header-info strong {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.menu-header-info small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.account-menu hr {
+    margin: 6px 0;
+    border: none;
+    border-top: 1px solid var(--border-color);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    width: 100%;
+    text-align: left;
+    transition: var(--transition);
+}
+
+.dropdown-item:hover {
+    background-color: var(--primary-blue-light);
+    color: var(--primary-blue);
+}
+
+.logout-link {
+    color: var(--accent-red);
+    font-weight: 600;
+}
+
+.logout-link:hover {
+    background-color: var(--accent-red-light);
+    color: var(--accent-red);
 }
 
 /* Content Container */

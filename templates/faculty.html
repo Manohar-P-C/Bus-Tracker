@@ -80,6 +80,11 @@
                     <i class="bi bi-gear-fill"></i>
                     <span data-i18n="nav_settings">Settings</span>
                 </button>
+
+                <a href="{{ url_for('logout') }}" class="nav-item logout-item">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span data-i18n="nav_logout">Logout</span>
+                </a>
             </nav>
 
             <!-- Sidebar Bottom Card: Assigned Bus Details -->
@@ -97,7 +102,8 @@
                     <i class="bi bi-person-badge-fill"></i>
                     <span>Driver: <strong>{{ driver.name if driver else 'Ramesh M.' }}</strong></span>
                 </div>
-                <button type="button" class="btn-sidebar-action" onclick="alert('Driver Contact: +91 {{ driver.phone if driver else '98765 11123' }}')">
+                {% set d_phone = driver.phone if driver else '98765 11123' %}
+                <button type="button" class="btn-sidebar-action" onclick="alert('Driver Contact: +91 {{ d_phone }}')">
                     View Driver Profile
                 </button>
             </div>
@@ -127,7 +133,7 @@
                     </div>
 
                     <!-- Notification Bell -->
-                    <button class="topbar-icon-btn" title="Notifications" onclick="document.querySelector('[data-tab=\'sos\']').click()">
+                    <button class="topbar-icon-btn" title="Notifications" onclick="document.querySelector('[data-tab=&quot;sos&quot;]').click()">
                         <i class="bi bi-bell-fill"></i>
                         <span class="notification-dot">3</span>
                     </button>
@@ -152,14 +158,31 @@
 
                     <div class="topbar-divider"></div>
 
-                    <!-- Account Avatar Header -->
-                    <div class="account-btn">
-                        <div class="account-avatar-icon">
-                            <i class="bi bi-mortarboard-fill"></i>
-                        </div>
-                        <div class="account-info-text">
-                            <span class="account-name">{{ user.name if user else 'Dr. Kavya M.' }}</span>
-                            <span class="account-role">Faculty Coordinator</span>
+                    <!-- Account Avatar Header with Dropdown -->
+                    <div class="account-dropdown-wrapper">
+                        <button class="account-btn" id="faculty-account-btn" onclick="toggleFacultyAccountDropdown(event)" title="Account Menu">
+                            <div class="account-avatar-icon">
+                                <i class="bi bi-mortarboard-fill"></i>
+                            </div>
+                            <div class="account-info-text">
+                                <span class="account-name">{{ user.name if user else 'Dr. Kavya M.' }}</span>
+                                <span class="account-role">Faculty Coordinator</span>
+                            </div>
+                            <i class="bi bi-chevron-down account-arrow"></i>
+                        </button>
+                        <div class="account-menu" id="faculty-account-menu">
+                            <div class="menu-header-info">
+                                <strong>{{ user.name if user else 'Dr. Kavya M.' }}</strong>
+                                <small>{{ user.email if user else 'faculty4@saividya.ac.in' }}</small>
+                            </div>
+                            <hr>
+                            <button class="dropdown-item" onclick="document.querySelector('[data-tab=&quot;settings&quot;]').click(); closeFacultyAccountDropdown();">
+                                <i class="bi bi-gear-fill"></i> <span data-i18n="nav_settings">Settings</span>
+                            </button>
+                            <hr>
+                            <a href="{{ url_for('logout') }}" class="dropdown-item logout-link">
+                                <i class="bi bi-box-arrow-right"></i> <span data-i18n="nav_logout">Logout</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -394,7 +417,7 @@
                                     </div>
                                 </div>
                                 <div class="progress-bar-sm w-100" style="height:10px;">
-                                    <div class="progress-fill" style="width: {{ attendance_rate }}%;"></div>
+                                    <div class="progress-fill" style="width:{{ attendance_rate }}%;"></div>
                                 </div>
                                 <div class="text-end mt-2" style="font-size:0.75rem; font-weight:700; color:var(--accent-green);">{{ attendance_rate }}% Boarded</div>
                             </div>
@@ -659,6 +682,16 @@
                             </div>
                             <button type="submit" class="btn-full-blue" style="margin-top:16px;">Save Changes</button>
                         </form>
+                        <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <strong style="font-size: 0.9rem; color: var(--text-primary);">Account Session</strong>
+                                <p class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">Sign out of your Faculty Coordinator account</p>
+                            </div>
+                            <a href="{{ url_for('logout') }}" class="btn-action-sm" style="background-color: var(--accent-red-light); color: var(--accent-red); padding: 8px 16px; font-weight: 700; text-decoration: none; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="bi bi-box-arrow-right"></i> <span data-i18n="nav_logout">Logout</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 

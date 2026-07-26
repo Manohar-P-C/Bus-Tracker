@@ -363,7 +363,22 @@ def faculty_dashboard():
     ]
 
     sos_alerts = conn.execute("SELECT * FROM sos_alerts WHERE bus_no = ? ORDER BY id DESC", (bus_no,)).fetchall()
-    sos_list = [dict(a) for a in sos_alerts]
+    raw_sos = [dict(a) for a in sos_alerts]
+    sos_list = []
+    for a in raw_sos:
+        msg = a.get('message', 'SOS Emergency Alert')
+        trig = a.get('triggered_by', 'Driver')
+        is_med = 'Medical' in msg or 'emergency' in msg.lower()
+        sos_list.append({
+            "id": a.get('id', 1),
+            "student_name": a.get('student_name') or trig,
+            "usn": a.get('usn') or '1VA21CS010',
+            "type": a.get('type') or msg,
+            "priority": a.get('priority') or ('High Priority' if is_med else 'Medium Priority'),
+            "bus_location": a.get('bus_location') or f"Bus {bus_no} En Route",
+            "time": a.get('time') or a.get('timestamp') or 'Just now',
+            "phone": a.get('phone') or '98450 12345'
+        })
     
     if not sos_list:
         sos_list = [

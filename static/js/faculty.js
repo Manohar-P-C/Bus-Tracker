@@ -9,36 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let facultyMap = null;
+let fullFacultyMap = null;
 
 // Initialize Leaflet Map for Assigned Bus
 function initFacultyMap() {
     const mapEl = document.getElementById('faculty-bus-map');
-    if (!mapEl) return;
+    const fullMapEl = document.getElementById('full-faculty-map');
 
-    // Faculty assigned bus coordinates (e.g. Bus 4 route through Silk Board / Koramangala / SVIT)
     const lat = window.FACULTY_BUS_LAT || 12.9352;
     const lng = window.FACULTY_BUS_LNG || 77.6245;
 
-    facultyMap = L.map('faculty-bus-map', {
-        zoomControl: true
-    }).setView([lat, lng], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(facultyMap);
-
-    // Custom Bus Icon
-    const busIcon = L.divIcon({
-        className: 'custom-bus-marker',
-        html: `<div style="background:#2563eb; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 10px rgba(37,99,235,0.4); border: 2px solid #fff;"><i class="bi bi-bus-front-fill" style="font-size:1.1rem;"></i></div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-    });
-
-    const marker = L.marker([lat, lng], { icon: busIcon }).addTo(facultyMap);
-    marker.bindPopup(`<b>Bus ${window.FACULTY_BUS_NO || 4}</b><br>Status: On Route<br>Speed: 32 km/h`).openPopup();
-
-    // Draw sample route polyline
+    const busIconHtml = `<div style="background:#2563eb; color:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 10px rgba(37,99,235,0.4); border: 2px solid #fff;"><i class="bi bi-bus-front-fill" style="font-size:1.1rem;"></i></div>`;
     const routeCoords = window.FACULTY_ROUTE_COORDS || [
         [12.9176, 77.6238],
         [12.9275, 77.6270],
@@ -48,15 +29,33 @@ function initFacultyMap() {
         [13.1480, 77.5700]
     ];
 
-    if (routeCoords && routeCoords.length > 0) {
-        const polyline = L.polyline(routeCoords, {
-            color: '#2563eb',
-            weight: 5,
-            opacity: 0.8,
-            dashArray: '8, 8'
-        }).addTo(facultyMap);
+    if (mapEl && !facultyMap) {
+        facultyMap = L.map('faculty-bus-map', { zoomControl: true }).setView([lat, lng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(facultyMap);
+        const icon1 = L.divIcon({ className: 'custom-bus-marker', html: busIconHtml, iconSize: [36, 36], iconAnchor: [18, 18] });
+        L.marker([lat, lng], { icon: icon1 }).addTo(facultyMap).bindPopup(`<b>Bus ${window.FACULTY_BUS_NO || 4}</b><br>Status: On Route`).openPopup();
+        if (routeCoords.length > 0) {
+            const poly1 = L.polyline(routeCoords, { color: '#2563eb', weight: 5, opacity: 0.8, dashArray: '8, 8' }).addTo(facultyMap);
+            facultyMap.fitBounds(poly1.getBounds(), { padding: [30, 30] });
+        }
+    }
 
-        facultyMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+    if (fullMapEl && !fullFacultyMap) {
+        fullFacultyMap = L.map('full-faculty-map', { zoomControl: true }).setView([lat, lng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(fullFacultyMap);
+        const icon2 = L.divIcon({ className: 'custom-bus-marker', html: busIconHtml, iconSize: [36, 36], iconAnchor: [18, 18] });
+        L.marker([lat, lng], { icon: icon2 }).addTo(fullFacultyMap).bindPopup(`<b>Bus ${window.FACULTY_BUS_NO || 4}</b><br>Status: On Route`).openPopup();
+        if (routeCoords.length > 0) {
+            const poly2 = L.polyline(routeCoords, { color: '#2563eb', weight: 5, opacity: 0.8, dashArray: '8, 8' }).addTo(fullFacultyMap);
+            fullFacultyMap.fitBounds(poly2.getBounds(), { padding: [30, 30] });
+        }
+    }
+}
+
+function switchFacultyTab(tabName) {
+    const navItem = document.querySelector(`.nav-item[data-tab="${tabName}"]`);
+    if (navItem) {
+        navItem.click();
     }
 }
 
@@ -103,9 +102,10 @@ function initTabs() {
                 }
             });
 
-            if (targetTab === 'tracking' && facultyMap) {
+            if (targetTab === 'tracking') {
                 setTimeout(() => {
-                    facultyMap.invalidateSize();
+                    if (facultyMap) facultyMap.invalidateSize();
+                    if (fullFacultyMap) fullFacultyMap.invalidateSize();
                 }, 200);
             }
         });
@@ -168,3 +168,27 @@ function triggerFacultySOS() {
         });
     }
 }
+
+// Account Dropdown Toggle
+function toggleFacultyAccountDropdown(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('faculty-account-menu');
+    if (menu) {
+        menu.classList.toggle('show');
+    }
+}
+
+function closeFacultyAccountDropdown() {
+    const menu = document.getElementById('faculty-account-menu');
+    if (menu) {
+        menu.classList.remove('show');
+    }
+}
+
+// Global click listener to close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.account-dropdown-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        closeFacultyAccountDropdown();
+    }
+});
