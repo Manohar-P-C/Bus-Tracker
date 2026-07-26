@@ -160,10 +160,10 @@
                             <button class="dropdown-item" onclick="openAccountModal()">
                                 <i class="bi bi-person-lines-fill"></i> <span data-i18n="my_account">My Account Details</span>
                             </button>
-                            <button class="dropdown-item" onclick="openAccountModal()">
+                            <button class="dropdown-item" onclick="openEditAdminProfileModal()">
                                 <i class="bi bi-pencil-square"></i> <span data-i18n="edit_profile">Edit Profile</span>
                             </button>
-                            <button class="dropdown-item" onclick="openAccountModal()">
+                            <button class="dropdown-item" onclick="openChangeAdminPasswordModal()">
                                 <i class="bi bi-shield-lock-fill"></i> <span data-i18n="change_password">Change Password</span>
                             </button>
                             <hr>
@@ -793,6 +793,67 @@
                 <div class="modal-footer-btns mt-4">
                     <button type="button" class="btn-secondary" onclick="closeEditFacultyModal()">Cancel</button>
                     <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+    <!-- Edit Admin Profile Modal -->
+    <div class="modal-overlay" id="edit-admin-profile-modal">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeEditAdminProfileModal()">&times;</button>
+            <div class="modal-header-box">
+                <i class="bi bi-pencil-square modal-icon-blue"></i>
+                <h3>Edit Admin Profile</h3>
+            </div>
+            <form id="edit-admin-profile-form" onsubmit="saveAdminProfileEdit(event)" class="mt-3">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="admin-profile-name" class="form-control" value="{{ user.name if user else 'Prof. Suresh Naidu' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="admin-profile-email" class="form-control" value="{{ user.email if user else 'admin@saividya.ac.in' }}" required>
+                </div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label class="form-label">Mobile Number</label>
+                        <input type="tel" id="admin-profile-phone" class="form-control" value="+91 9845012345" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Designation / Role Title</label>
+                        <input type="text" id="admin-profile-title" class="form-control" value="{{ user.title if user else 'Transport Head' }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer-btns mt-4">
+                    <button type="button" class="btn-secondary" onclick="closeEditAdminProfileModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Admin Password Modal -->
+    <div class="modal-overlay" id="change-admin-password-modal">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeChangeAdminPasswordModal()">&times;</button>
+            <div class="modal-header-box">
+                <i class="bi bi-shield-lock-fill modal-icon-blue"></i>
+                <h3>Change Password</h3>
+            </div>
+            <form id="change-admin-password-form" onsubmit="saveAdminPasswordChange(event)" class="mt-3">
+                <div class="form-group">
+                    <label class="form-label">Current Password <span class="text-red">*</span></label>
+                    <input type="password" id="admin-curr-password" class="form-control" placeholder="Enter current password" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password <span class="text-red">*</span></label>
+                    <input type="password" id="admin-new-password" class="form-control" placeholder="Min 6 characters" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm New Password <span class="text-red">*</span></label>
+                    <input type="password" id="admin-confirm-password" class="form-control" placeholder="Re-type new password" required>
+                </div>
+                <div class="modal-footer-btns mt-4">
+                    <button type="button" class="btn-secondary" onclick="closeChangeAdminPasswordModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Password</button>
                 </div>
             </form>
         </div>

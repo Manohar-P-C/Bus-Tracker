@@ -797,6 +797,13 @@ def handle_faculty():
         conn.close()
         return jsonify({'success': True, 'message': 'Faculty details updated!'})
 
+    elif request.method == 'DELETE':
+        faculty_id = request.args.get('id')
+        conn.execute("DELETE FROM users WHERE id = ? AND role = 'faculty'", (faculty_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Faculty deleted!'})
+
 
 # 4. ROUTES API (9 Routes)
 @app.route('/api/routes', methods=['GET', 'POST', 'PUT', 'DELETE'])

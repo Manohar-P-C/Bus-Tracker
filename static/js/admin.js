@@ -134,6 +134,60 @@ function closeAccountModal() {
     if (modal) modal.classList.remove('active');
 }
 
+function openEditAdminProfileModal() {
+    const modal = document.getElementById('edit-admin-profile-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeEditAdminProfileModal() {
+    const modal = document.getElementById('edit-admin-profile-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function saveAdminProfileEdit(e) {
+    e.preventDefault();
+    const name = document.getElementById('admin-profile-name').value;
+    const email = document.getElementById('admin-profile-email').value;
+    const phone = document.getElementById('admin-profile-phone').value;
+    const title = document.getElementById('admin-profile-title').value;
+
+    const accName = document.getElementById('acc-name');
+    const accEmail = document.getElementById('acc-email');
+    const accTitle = document.getElementById('acc-title');
+    if (accName) accName.textContent = name;
+    if (accEmail) accEmail.textContent = email;
+    if (accTitle) accTitle.textContent = title;
+
+    const topName = document.querySelector('.account-name');
+    if (topName) topName.textContent = name.split('(')[0].trim();
+
+    closeEditAdminProfileModal();
+    alert("Admin Profile updated successfully!");
+}
+
+function openChangeAdminPasswordModal() {
+    const modal = document.getElementById('change-admin-password-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeChangeAdminPasswordModal() {
+    const modal = document.getElementById('change-admin-password-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function saveAdminPasswordChange(e) {
+    e.preventDefault();
+    const newPass = document.getElementById('admin-new-password').value;
+    const confirmPass = document.getElementById('admin-confirm-password').value;
+    if (newPass !== confirmPass) {
+        alert("New password and Confirm Password do not match!");
+        return;
+    }
+    closeChangeAdminPasswordModal();
+    document.getElementById('change-admin-password-form').reset();
+    alert("Password updated successfully!");
+}
+
 // ==========================================
 // DYNAMIC BUS DROPDOWN POPULATOR
 // ==========================================
@@ -883,7 +937,7 @@ async function deleteBus(busNo) {
     }
 }
 
-// TAB 3: DRIVERS DATA (with Edit buttons)
+// TAB 3: DRIVERS DATA (with Edit and Delete buttons)
 async function loadDriversData() {
     try {
         const res = await fetch('/api/drivers');
@@ -901,6 +955,7 @@ async function loadDriversData() {
                 <td><span class="badge-pill bg-blue">Bus ${d.assigned_bus}</span></td>
                 <td>
                     <button class="btn-sm btn-outline text-blue" onclick="openEditDriverModal(${d.id})"><i class="bi bi-pencil"></i> Edit</button>
+                    <button class="btn-sm btn-outline text-red" onclick="deleteDriver(${d.id})"><i class="bi bi-trash"></i> Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -910,7 +965,22 @@ async function loadDriversData() {
     }
 }
 
-// TAB 3b: FACULTY DATA (with Edit buttons)
+async function deleteDriver(id) {
+    if (!confirm("Are you sure you want to delete this driver profile?")) return;
+    try {
+        const res = await fetch(`/api/drivers?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            loadDriversData();
+            loadBusesData();
+            loadDashboardStats();
+        }
+    } catch (err) {
+        console.error("Error deleting driver:", err);
+    }
+}
+
+// TAB 3b: FACULTY DATA (with Edit and Delete buttons)
 async function loadFacultyData() {
     try {
         const res = await fetch('/api/faculty');
@@ -929,12 +999,27 @@ async function loadFacultyData() {
                 <td><small>${f.route_name}</small></td>
                 <td>
                     <button class="btn-sm btn-outline text-blue" onclick="openEditFacultyModal(${f.id})"><i class="bi bi-pencil"></i> Edit</button>
+                    <button class="btn-sm btn-outline text-red" onclick="deleteFaculty(${f.id})"><i class="bi bi-trash"></i> Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) {
         console.error("Error loading faculty data:", e);
+    }
+}
+
+async function deleteFaculty(id) {
+    if (!confirm("Are you sure you want to remove this faculty coordinator?")) return;
+    try {
+        const res = await fetch(`/api/faculty?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            loadFacultyData();
+            loadDashboardStats();
+        }
+    } catch (err) {
+        console.error("Error deleting faculty:", err);
     }
 }
 

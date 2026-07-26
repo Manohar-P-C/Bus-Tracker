@@ -224,36 +224,15 @@ function generatePassQRCode() {
         bus_no: STUDENT_DATA.bus_no
     });
 
+    const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}`;
+    const bigQrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
+
     if (qrContainer) {
-        qrContainer.innerHTML = '';
-        if (typeof QRCode !== 'undefined') {
-            new QRCode(qrContainer, {
-                text: qrPayload,
-                width: 250,
-                height: 250,
-                colorDark : "#0f172a",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.M
-            });
-        } else {
-            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
-        }
+        qrContainer.innerHTML = `<img src="${qrImgUrl}" alt="Bus Pass QR" style="width: 100%; max-width: 200px; height: auto; border-radius: 8px; display: block; margin: 0 auto; background: #fff; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">`;
     }
 
     if (bigQrContainer) {
-        bigQrContainer.innerHTML = '';
-        if (typeof QRCode !== 'undefined') {
-            new QRCode(bigQrContainer, {
-                text: qrPayload,
-                width: 300,
-                height: 300,
-                colorDark : "#0f172a",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.M
-            });
-        } else {
-            bigQrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}" alt="Bus Pass QR">`;
-        }
+        bigQrContainer.innerHTML = `<img src="${bigQrImgUrl}" alt="Bus Pass QR" style="width: 100%; max-width: 260px; height: auto; border-radius: 12px; display: block; margin: 0 auto; background: #fff; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">`;
     }
 }
 
