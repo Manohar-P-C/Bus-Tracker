@@ -565,24 +565,13 @@
                                     <div class="emergency-grid">
                                         <div class="emerg-card">
                                             <div class="e-left">
-                                                <div class="e-icon bg-blue-soft"><i class="bi bi-bus-front-fill"></i></div>
-                                                <div class="e-text">
-                                                    <strong>Transport Office</strong>
-                                                    <span>080-23591312</span>
-                                                </div>
-                                            </div>
-                                            <a href="tel:08023591312" class="e-call-btn" title="Call Transport Office"><i class="bi bi-telephone-fill"></i></a>
-                                        </div>
-
-                                        <div class="emerg-card">
-                                            <div class="e-left">
                                                 <div class="e-icon bg-green-soft"><i class="bi bi-person-badge-fill"></i></div>
                                                 <div class="e-text">
                                                     <strong>Driver</strong>
-                                                    <span>98765 11123</span>
+                                                    <span>+91 {{ driver.phone if driver else '98765 11123' }}</span>
                                                 </div>
                                             </div>
-                                            <a href="tel:9876511123" class="e-call-btn" title="Call Driver"><i class="bi bi-telephone-fill"></i></a>
+                                            <a href="tel:{{ driver.phone if driver else '9876511123' }}" class="e-call-btn" title="Call Driver"><i class="bi bi-telephone-fill"></i></a>
                                         </div>
 
                                         <div class="emerg-card">
@@ -590,43 +579,10 @@
                                                 <div class="e-icon bg-purple-soft"><i class="bi bi-mortarboard-fill"></i></div>
                                                 <div class="e-text">
                                                     <strong>Faculty Incharge</strong>
-                                                    <span>96325 77890</span>
+                                                    <span>+91 {{ faculty.phone if faculty else '96325 77890' }}</span>
                                                 </div>
                                             </div>
-                                            <a href="tel:9632577890" class="e-call-btn" title="Call Faculty"><i class="bi bi-telephone-fill"></i></a>
-                                        </div>
-
-                                        <div class="emerg-card">
-                                            <div class="e-left">
-                                                <div class="e-icon bg-red-soft"><i class="bi bi-shield-shaded"></i></div>
-                                                <div class="e-text">
-                                                    <strong>Police (112)</strong>
-                                                    <span>112</span>
-                                                </div>
-                                            </div>
-                                            <a href="tel:112" class="e-call-btn" title="Call Police"><i class="bi bi-telephone-fill"></i></a>
-                                        </div>
-
-                                        <div class="emerg-card">
-                                            <div class="e-left">
-                                                <div class="e-icon bg-amber-soft"><i class="bi bi-heart-pulse-fill"></i></div>
-                                                <div class="e-text">
-                                                    <strong>Ambulance (108)</strong>
-                                                    <span>108</span>
-                                                </div>
-                                            </div>
-                                            <a href="tel:108" class="e-call-btn" title="Call Ambulance"><i class="bi bi-telephone-fill"></i></a>
-                                        </div>
-
-                                        <div class="emerg-card">
-                                            <div class="e-left">
-                                                <div class="e-icon bg-orange-soft"><i class="bi bi-fire"></i></div>
-                                                <div class="e-text">
-                                                    <strong>Fire Station (101)</strong>
-                                                    <span>101</span>
-                                                </div>
-                                            </div>
-                                            <a href="tel:101" class="e-call-btn" title="Call Fire Station"><i class="bi bi-telephone-fill"></i></a>
+                                            <a href="tel:{{ faculty.phone if faculty else '9632577890' }}" class="e-call-btn" title="Call Faculty"><i class="bi bi-telephone-fill"></i></a>
                                         </div>
                                     </div>
                                 </div>
@@ -787,17 +743,6 @@
                             <div class="emergency-grid p-4">
                                 <div class="emerg-card lg">
                                     <div class="e-left">
-                                        <div class="e-icon bg-blue-soft"><i class="bi bi-bus-front-fill"></i></div>
-                                        <div class="e-text">
-                                            <strong>SVIT Transport Office</strong>
-                                            <span>080-23591312 / +91 9845012345</span>
-                                        </div>
-                                    </div>
-                                    <a href="tel:08023591312" class="btn-action-sm btn-blue-soft"><i class="bi bi-telephone-fill"></i> Call Office</a>
-                                </div>
-
-                                <div class="emerg-card lg">
-                                    <div class="e-left">
                                         <div class="e-icon bg-green-soft"><i class="bi bi-person-badge-fill"></i></div>
                                         <div class="e-text">
                                             <strong>Bus Driver ({{ driver.name if driver else 'Ramesh M.' }})</strong>
@@ -809,13 +754,13 @@
 
                                 <div class="emerg-card lg">
                                     <div class="e-left">
-                                        <div class="e-icon bg-red-soft"><i class="bi bi-shield-shaded"></i></div>
+                                        <div class="e-icon bg-purple-soft"><i class="bi bi-mortarboard-fill"></i></div>
                                         <div class="e-text">
-                                            <strong>Police Control Room</strong>
-                                            <span>Emergency Helpline 112 / 100</span>
+                                            <strong>Faculty Incharge ({{ faculty.full_name if faculty else 'Dr. Kavya M.' }})</strong>
+                                            <span>+91 {{ faculty.phone if faculty else '96325 77890' }}</span>
                                         </div>
                                     </div>
-                                    <a href="tel:112" class="btn-action-sm btn-red-soft"><i class="bi bi-telephone-fill"></i> Call 112</a>
+                                    <a href="tel:{{ faculty.phone if faculty else '9632577890' }}" class="btn-action-sm btn-purple-soft"><i class="bi bi-telephone-fill"></i> Call Faculty</a>
                                 </div>
                             </div>
                         </div>
