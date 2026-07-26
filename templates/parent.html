@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard - SVIT Smart Bus Tracker</title>
+    <meta name="description" content="Enterprise Parent Portal for Sai Vidya Institute of Technology Smart Bus Tracking System.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+
+    <!-- Custom Parent Dashboard CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/parent.css') }}">
+</head>
+<body class="light-theme">
+    <script>
+        // Apply saved theme instantly to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('svit_theme') || 'light';
+            document.body.className = savedTheme + '-theme';
+        })();
+    </script>
+
+    <div class="parent-wrapper">
+        <!-- Left Sidebar Navigation -->
+        <aside class="parent-sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-badge">
+                    <i class="bi bi-bus-front-fill brand-icon"></i>
+                    <div class="brand-text">
+                        <span class="brand-title">SVIT</span>
+                        <span class="brand-subtitle">Smart Bus Tracker</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <button class="nav-item active" data-tab="tab-dashboard" onclick="switchParentTab('tab-dashboard')">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span data-i18n="nav_dashboard">Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="tab-tracking" onclick="switchParentTab('tab-tracking')">
+                    <i class="bi bi-geo-alt-fill"></i>
+                    <span data-i18n="live_bus_tracking">Live Bus Tracking</span>
+                    <span class="badge-pill bg-live">Live</span>
+                </button>
+                <button class="nav-item" data-tab="tab-driver" onclick="switchParentTab('tab-driver')">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span data-i18n="driver_details">Driver Details</span>
+                </button>
+                <button class="nav-item" data-tab="tab-faculty" onclick="switchParentTab('tab-faculty')">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <span data-i18n="faculty_details">Faculty Details</span>
+                </button>
+                <button class="nav-item" data-tab="tab-attendance" onclick="switchParentTab('tab-attendance')">
+                    <i class="bi bi-calendar-check-fill"></i>
+                    <span data-i18n="nav_attendance">Attendance</span>
+                </button>
+                <button class="nav-item" data-tab="tab-notifications" onclick="switchParentTab('tab-notifications')">
+                    <i class="bi bi-bell-fill"></i>
+                    <span data-i18n="nav_notifications">Notifications</span>
+                    <span class="badge-pill bg-red">5</span>
+                </button>
+                <button class="nav-item" data-tab="tab-emergency" onclick="switchParentTab('tab-emergency')">
+                    <i class="bi bi-clock-history"></i>
+                    <span data-i18n="emergency_contacts">Emergency Contacts</span>
+                </button>
+                <button class="nav-item" data-tab="tab-settings" onclick="switchParentTab('tab-settings')">
+                    <i class="bi bi-gear-fill"></i>
+                    <span data-i18n="nav_settings">Settings</span>
+                </button>
+                <a href="{{ url_for('logout') }}" class="nav-item logout-item">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span data-i18n="nav_logout">Logout</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Bottom Help Widget -->
+            <div class="sidebar-help-card">
+                <div class="help-content">
+                    <span class="help-title">Need Help?</span>
+                    <span class="help-sub">Transport Office</span>
+                    <a href="tel:08023591312" class="help-phone">080-23591312</a>
+                </div>
+                <a href="tel:08023591312" class="help-call-btn" title="Call Transport Office">
+                    <i class="bi bi-telephone-fill"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="parent-main">
+            <!-- Topbar Header -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="welcome-block">
+                        <h2 class="welcome-title">Welcome, Parent! 👋</h2>
+                        <span class="welcome-sub">We are glad to have you here.</span>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Search Bar -->
+                    <div class="search-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="parent-search-input" placeholder="Search anything..." onkeyup="handleParentSearch(event)">
+                    </div>
+
+                    <!-- Notification Bell -->
+                    <button class="topbar-icon-btn" onclick="switchParentTab('tab-notifications')" title="Notifications">
+                        <i class="bi bi-bell-fill"></i>
+                        <span class="notification-dot">5</span>
+                    </button>
+
+                    <!-- Language Selector -->
+                    <div class="language-selector-wrapper">
+                        <i class="bi bi-globe2 lang-icon"></i>
+                        <select id="language-selector-dropdown" class="lang-dropdown-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="kn">ಕನ್ನಡ</option>
+                            <option value="hi">हिन्दी</option>
+                            <option value="te">తెలుగు</option>
+                            <option value="ta">தமிழ்</option>
+                            <option value="ml">മലയാളം</option>
+                        </select>
+                    </div>
+
+                    <!-- Day/Night Theme Toggle -->
+                    <button class="topbar-icon-btn theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <i class="bi bi-sun-fill" id="theme-icon"></i>
+                    </button>
+
+                    <div class="topbar-divider"></div>
+
+                    <!-- Parent Profile Dropdown -->
+                    <div class="account-dropdown-wrapper">
+                        <button class="account-btn" onclick="toggleAccountDropdown()">
+                            <div class="account-avatar">
+                                <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80" alt="Parent Avatar" class="avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=Priya+Sharma&background=2563eb&color=fff'">
+                            </div>
+                            <div class="account-info-text">
+                                <span class="account-name">{{ user.name if user and user.name != 'Parent / Guardian' else 'Priya Sharma' }}</span>
+                                <span class="account-role">Parent</span>
+                            </div>
+                            <i class="bi bi-chevron-down account-arrow"></i>
+                        </button>
+
+                        <div class="account-menu" id="account-dropdown-menu">
+                            <div class="menu-header-info">
+                                <strong>{{ user.name if user else 'Priya Sharma' }}</strong>
+                                <small>{{ user.email if user else 'priya.sharma@gmail.com' }}</small>
+                            </div>
+                            <hr>
+                            <button class="dropdown-item" onclick="openProfileModal()">
+                                <i class="bi bi-person-circle"></i> <span>My Profile</span>
+                            </button>
+                            <button class="dropdown-item" onclick="scrollToStudentCard()">
+                                <i class="bi bi-mortarboard-fill"></i> <span>Student Details</span>
+                            </button>
+                            <button class="dropdown-item" onclick="openChangePasswordModal()">
+                                <i class="bi bi-shield-lock-fill"></i> <span>Change Password</span>
+                            </button>
+                            <button class="dropdown-item" onclick="switchParentTab('tab-settings')">
+                                <i class="bi bi-translate"></i> <span>Language</span>
+                            </button>
+                            <hr>
+                            <a href="{{ url_for('logout') }}" class="dropdown-item logout-link">
+                                <i class="bi bi-box-arrow-right"></i> <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Body -->
+            <div class="content-container">
+                <!-- TOP PROFILE CARD (Student & Parent Details Banner) -->
+                <section class="student-profile-banner" id="student-profile-card">
+                    <div class="profile-left">
+                        <div class="student-photo-wrapper">
+                            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80" alt="Student Photo" class="student-photo" onerror="this.src='https://ui-avatars.com/api/?name={{ student.full_name | replace(' ', '+') }}&background=2563eb&color=fff'">
+                        </div>
+                        <div class="student-main-meta">
+                            <h2 class="s-name">{{ student.full_name if student else 'Arjun Kumar' }}</h2>
+                            <span class="usn-tag">USN: {{ student.usn if student else '1SV22CS015' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-center-grid">
+                        <div class="meta-item">
+                            <div class="meta-icon bg-blue-soft"><i class="bi bi-building"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Department</span>
+                                <strong class="meta-val">Computer Science</strong>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon bg-purple-soft"><i class="bi bi-mortarboard"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Year / Semester</span>
+                                <strong class="meta-val">2nd Year / 4th Sem</strong>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon bg-green-soft"><i class="bi bi-bus-front"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Bus Number</span>
+                                <strong class="meta-val">Bus {{ student.bus_no if student else 4 }}</strong>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon bg-amber-soft"><i class="bi bi-signpost-2"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Route Number</span>
+                                <strong class="meta-val">Route {{ student.bus_no if student else 4 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-right-grid">
+                        <div class="meta-item">
+                            <div class="meta-icon bg-slate-soft"><i class="bi bi-person-fill"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Parent Name</span>
+                                <strong class="meta-val">{{ user.name if user and 'Parent' not in user.name else 'Priya Sharma' }}</strong>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon bg-slate-soft"><i class="bi bi-telephone-fill"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Mobile Number</span>
+                                <strong class="meta-val">+91 98765 43210</strong>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon bg-slate-soft"><i class="bi bi-envelope-fill"></i></div>
+                            <div class="meta-text">
+                                <span class="meta-label">Email</span>
+                                <strong class="meta-val">{{ user.email if user else 'priya.sharma@gmail.com' }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB PANELS CONTAINER -->
+                <div class="tab-content-area">
+                    <!-- TAB 0: MAIN DASHBOARD -->
+                    <div class="tab-panel active" id="tab-dashboard">
+                        <!-- Main Dashboard 3-Column Layout Grid -->
+                        <div class="dashboard-grid">
+                            <!-- Left Main Column (Live Tracking & Attendance History & Notifications) -->
+                            <div class="dash-col-left">
+                                <!-- 1. LIVE BUS TRACKING CARD -->
+                                <div class="panel-card map-card">
+                                    <div class="panel-header flex-between">
+                                        <div class="title-group">
+                                            <h3><i class="bi bi-geo-alt-fill text-blue"></i> Live Bus Tracking</h3>
+                                            <span class="pulse-status-badge"><span class="pulse-dot"></span> Live</span>
+                                        </div>
+                                        <div class="map-controls">
+                                            <button class="btn-map-tab active" id="btn-normal-view" onclick="setMapTile('normal')">Normal</button>
+                                            <button class="btn-map-tab" id="btn-satellite-view" onclick="setMapTile('satellite')">Satellite</button>
+                                            <button class="btn-icon-control" onclick="toggleFullscreenMap()" title="Fullscreen"><i class="bi bi-arrows-fullscreen"></i></button>
+                                        </div>
+                                    </div>
+
+                                    <div class="map-container-wrapper">
+                                        <div id="parent-live-map" class="leaflet-map-box"></div>
+                                        
+                                        <!-- Floating Telemetry Card Overlay (Matching Image) -->
+                                        <div class="telemetry-card-overlay">
+                                            <div class="tele-header flex-between">
+                                                <h4 class="tele-bus-title">Bus {{ student.bus_no if student else 4 }}</h4>
+                                                <span class="tele-status-tag">On Route</span>
+                                            </div>
+                                            <div class="tele-body">
+                                                <div class="tele-row">
+                                                    <span class="t-icon text-green"><i class="bi bi-geo-alt-fill"></i></span>
+                                                    <div class="t-meta">
+                                                        <span class="t-lbl">Current Stop</span>
+                                                        <strong class="t-val" id="tele-curr-stop">5th Block Koramangala</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="tele-row">
+                                                    <span class="t-icon text-amber"><i class="bi bi-signpost-split"></i></span>
+                                                    <div class="t-meta">
+                                                        <span class="t-lbl">Next Stop</span>
+                                                        <strong class="t-val" id="tele-next-stop">Silk Board</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="tele-row">
+                                                    <span class="t-icon text-blue"><i class="bi bi-clock-history"></i></span>
+                                                    <div class="t-meta">
+                                                        <span class="t-lbl">ETA</span>
+                                                        <strong class="t-val" id="tele-eta">6 min</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="tele-row">
+                                                    <span class="t-icon text-purple"><i class="bi bi-pin-map-fill"></i></span>
+                                                    <div class="t-meta">
+                                                        <span class="t-lbl">Distance Remaining</span>
+                                                        <strong class="t-val" id="tele-dist">2.4 km</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="tele-row">
+                                                    <span class="t-icon text-red"><i class="bi bi-speedometer2"></i></span>
+                                                    <div class="t-meta">
+                                                        <span class="t-lbl">Speed</span>
+                                                        <strong class="t-val" id="tele-speed">32 km/h</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button class="btn-view-full-route" onclick="switchParentTab('tab-tracking')">
+                                                View Full Route
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2 & 3: Bottom Row in Left Column (Attendance History & Notifications) -->
+                                <div class="left-bottom-grid">
+                                    <!-- ATTENDANCE HISTORY CARD -->
+                                    <div class="panel-card">
+                                        <div class="panel-header flex-between">
+                                            <h3>Attendance History</h3>
+                                            <div class="filter-group">
+                                                <select class="select-filter-sm" onchange="filterAttendanceHistory(this.value)">
+                                                    <option value="month">This Month</option>
+                                                    <option value="week">This Week</option>
+                                                    <option value="all">All</option>
+                                                </select>
+                                                <select class="select-filter-sm" onchange="filterAttendanceStatus(this.value)">
+                                                    <option value="all">All</option>
+                                                    <option value="present">Present</option>
+                                                    <option value="absent">Absent</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Status</th>
+                                                        <th>Boarding Time</th>
+                                                        <th>Remarks</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="attendance-tbody">
+                                                    <tr>
+                                                        <td>29 Aug 2025</td>
+                                                        <td><span class="badge-status status-present">Present</span></td>
+                                                        <td>07:32 AM</td>
+                                                        <td>-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>28 Aug 2025</td>
+                                                        <td><span class="badge-status status-present">Present</span></td>
+                                                        <td>07:28 AM</td>
+                                                        <td>-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>27 Aug 2025</td>
+                                                        <td><span class="badge-status status-present">Present</span></td>
+                                                        <td>07:35 AM</td>
+                                                        <td>-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>26 Aug 2025</td>
+                                                        <td><span class="badge-status status-absent">Absent</span></td>
+                                                        <td>-</td>
+                                                        <td>Sick Leave</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>25 Aug 2025</td>
+                                                        <td><span class="badge-status status-present">Present</span></td>
+                                                        <td>07:30 AM</td>
+                                                        <td>-</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="panel-footer text-right">
+                                            <button class="btn-link" onclick="switchParentTab('tab-attendance')">
+                                                View Full Attendance <i class="bi bi-arrow-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- NOTIFICATIONS LIST CARD -->
+                                    <div class="panel-card">
+                                        <div class="panel-header flex-between">
+                                            <h3>Notifications</h3>
+                                            <button class="btn-link" onclick="switchParentTab('tab-notifications')">View All</button>
+                                        </div>
+                                        <div class="notifications-list-mini">
+                                            <div class="notif-item">
+                                                <div class="notif-icon bg-green"><i class="bi bi-bus-front-fill"></i></div>
+                                                <div class="notif-text">
+                                                    <span>Student boarded the bus (Bus {{ student.bus_no if student else 4 }})</span>
+                                                </div>
+                                                <span class="notif-time">07:32 AM <span class="dot-unread"></span></span>
+                                            </div>
+
+                                            <div class="notif-item">
+                                                <div class="notif-icon bg-blue"><i class="bi bi-building-check"></i></div>
+                                                <div class="notif-text">
+                                                    <span>Student reached college</span>
+                                                </div>
+                                                <span class="notif-time">08:18 AM <span class="dot-unread"></span></span>
+                                            </div>
+
+                                            <div class="notif-item">
+                                                <div class="notif-icon bg-purple"><i class="bi bi-box-arrow-right"></i></div>
+                                                <div class="notif-text">
+                                                    <span>Student left college</span>
+                                                </div>
+                                                <span class="notif-time">04:45 PM <span class="dot-unread"></span></span>
+                                            </div>
+
+                                            <div class="notif-item">
+                                                <div class="notif-icon bg-red"><i class="bi bi-house-check-fill"></i></div>
+                                                <div class="notif-text">
+                                                    <span>Student reached home stop</span>
+                                                </div>
+                                                <span class="notif-time">05:30 PM <span class="dot-unread"></span></span>
+                                            </div>
+
+                                            <div class="notif-item">
+                                                <div class="notif-icon bg-amber"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                                                <div class="notif-text">
+                                                    <span>Bus delayed by 10 minutes</span>
+                                                </div>
+                                                <span class="notif-time">07:05 AM <span class="dot-unread"></span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Side Column (Driver, Faculty, Today's Attendance, Emergency Contacts) -->
+                            <div class="dash-col-right">
+                                <!-- DRIVER DETAILS CARD -->
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <h3>Driver Details</h3>
+                                    </div>
+                                    <div class="person-card-body">
+                                        <div class="person-avatar-col">
+                                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="Driver" class="person-img" onerror="this.src='https://ui-avatars.com/api/?name=Ramesh+M&background=2563eb&color=fff'">
+                                        </div>
+                                        <div class="person-info-col">
+                                            <div class="person-name-row">
+                                                <h4>{{ driver.name if driver else 'Ramesh M.' }}</h4>
+                                                <span class="rating-badge"><i class="bi bi-star-fill"></i> 4.8 (128)</span>
+                                            </div>
+                                            <span class="person-phone"><i class="bi bi-telephone-fill"></i> +91 {{ driver.phone if driver else '98765 11123' }}</span>
+                                            <span class="person-bus-badge"><i class="bi bi-bus-front"></i> Bus {{ student.bus_no if student else 4 }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="person-card-footer">
+                                        <a href="tel:{{ driver.phone if driver else '9876511123' }}" class="btn-action-full btn-blue-soft">
+                                            <i class="bi bi-telephone-outbound-fill"></i> Call Driver
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- FACULTY INCHARGE CARD -->
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <h3>Faculty Incharge</h3>
+                                    </div>
+                                    <div class="person-card-body">
+                                        <div class="person-avatar-col">
+                                            <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=120&auto=format&fit=crop&q=80" alt="Faculty" class="person-img" onerror="this.src='https://ui-avatars.com/api/?name=Kavya+M&background=2563eb&color=fff'">
+                                        </div>
+                                        <div class="person-info-col">
+                                            <h4>{{ faculty.full_name if faculty else 'Dr. Kavya M.' }}</h4>
+                                            <span class="person-sub">Assistant Professor</span>
+                                            <span class="person-dept">Dept. of CSE</span>
+                                            <span class="person-phone"><i class="bi bi-telephone-fill"></i> +91 {{ faculty.phone if faculty else '96325 77890' }}</span>
+                                            <span class="person-email"><i class="bi bi-envelope-fill"></i> {{ faculty.email if faculty else 'kavya.m@svit.ac.in' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="person-card-footer flex-row-2">
+                                        <a href="tel:{{ faculty.phone if faculty else '9632577890' }}" class="btn-action-half btn-green-soft">
+                                            <i class="bi bi-telephone-fill"></i> Call
+                                        </a>
+                                        <a href="mailto:{{ faculty.email if faculty else 'kavya.m@svit.ac.in' }}" class="btn-action-half btn-blue-soft">
+                                            <i class="bi bi-envelope-fill"></i> Email
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- TODAY'S ATTENDANCE TIMELINE & DONUT GAUGE CARD -->
+                                <div class="panel-card">
+                                    <div class="panel-header flex-between">
+                                        <h3>Today's Attendance</h3>
+                                        <button class="btn-link" onclick="switchParentTab('tab-attendance')">View History</button>
+                                    </div>
+                                    
+                                    <!-- Timeline Stepper (Matching Image Exactly) -->
+                                    <div class="attendance-stepper">
+                                        <div class="step-item completed">
+                                            <div class="step-icon bg-green"><i class="bi bi-bus-front-fill"></i></div>
+                                            <span class="step-title">Boarded Bus</span>
+                                            <span class="step-time">07:32 AM</span>
+                                        </div>
+                                        <div class="step-connector completed"></div>
+
+                                        <div class="step-item completed">
+                                            <div class="step-icon bg-blue"><i class="bi bi-building-check"></i></div>
+                                            <span class="step-title">Reached College</span>
+                                            <span class="step-time">08:18 AM</span>
+                                        </div>
+                                        <div class="step-connector"></div>
+
+                                        <div class="step-item">
+                                            <div class="step-icon bg-purple"><i class="bi bi-box-arrow-right"></i></div>
+                                            <span class="step-title">Left College</span>
+                                            <span class="step-time">04:45 PM</span>
+                                        </div>
+                                        <div class="step-connector"></div>
+
+                                        <div class="step-item">
+                                            <div class="step-icon bg-red"><i class="bi bi-house-door-fill"></i></div>
+                                            <span class="step-title">Reached Home Stop</span>
+                                            <span class="step-time">05:30 PM</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Monthly Gauge -->
+                                    <div class="attendance-summary-block flex-between">
+                                        <div class="donut-chart-wrapper">
+                                            <div class="donut-circle">
+                                                <span class="donut-value">92%</span>
+                                            </div>
+                                        </div>
+                                        <div class="summary-meta">
+                                            <span class="meta-header-title">Attendance (This Month)</span>
+                                            <div class="meta-counter-row">
+                                                <span class="c-item green-text"><i class="bi bi-check-circle-fill"></i> Present Days <strong>23</strong></span>
+                                                <span class="c-item red-text"><i class="bi bi-x-circle-fill"></i> Absent Days <strong>2</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- EMERGENCY CONTACTS CARD (Grid matching image) -->
+                                <div class="panel-card">
+                                    <div class="panel-header">
+                                        <h3>Emergency Contacts</h3>
+                                    </div>
+                                    <div class="emergency-grid">
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-blue-soft"><i class="bi bi-bus-front-fill"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Transport Office</strong>
+                                                    <span>080-23591312</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:08023591312" class="e-call-btn" title="Call Transport Office"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-green-soft"><i class="bi bi-person-badge-fill"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Driver</strong>
+                                                    <span>98765 11123</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:9876511123" class="e-call-btn" title="Call Driver"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-purple-soft"><i class="bi bi-mortarboard-fill"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Faculty Incharge</strong>
+                                                    <span>96325 77890</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:9632577890" class="e-call-btn" title="Call Faculty"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-red-soft"><i class="bi bi-shield-shaded"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Police (112)</strong>
+                                                    <span>112</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:112" class="e-call-btn" title="Call Police"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-amber-soft"><i class="bi bi-heart-pulse-fill"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Ambulance (108)</strong>
+                                                    <span>108</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:108" class="e-call-btn" title="Call Ambulance"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+
+                                        <div class="emerg-card">
+                                            <div class="e-left">
+                                                <div class="e-icon bg-orange-soft"><i class="bi bi-fire"></i></div>
+                                                <div class="e-text">
+                                                    <strong>Fire Station (101)</strong>
+                                                    <span>101</span>
+                                                </div>
+                                            </div>
+                                            <a href="tel:101" class="e-call-btn" title="Call Fire Station"><i class="bi bi-telephone-fill"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 1: FULL LIVE BUS TRACKING TAB -->
+                    <div class="tab-panel" id="tab-tracking">
+                        <div class="panel-card">
+                            <div class="panel-header flex-between">
+                                <h2>Live Bus Tracking — Bus {{ student.bus_no if student else 4 }}</h2>
+                                <span class="badge-pill bg-live"><i class="bi bi-broadcast"></i> Active GPS Feed</span>
+                            </div>
+                            <div style="height: 550px;" id="full-parent-map"></div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: DRIVER DETAILS TAB -->
+                    <div class="tab-panel" id="tab-driver">
+                        <div class="panel-card max-w-600 center-margin">
+                            <div class="panel-header">
+                                <h2>Assigned Bus Driver</h2>
+                            </div>
+                            <div class="person-card-body p-4">
+                                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80" alt="Driver" class="person-img lg" onerror="this.src='https://ui-avatars.com/api/?name=Ramesh+M&background=2563eb&color=fff'">
+                                <h3>{{ driver.name if driver else 'Ramesh M.' }}</h3>
+                                <p class="text-muted">Assigned Driver for Bus {{ student.bus_no if student else 4 }}</p>
+                                <hr>
+                                <div class="detail-row"><span class="lbl">Mobile:</span> <strong>+91 {{ driver.phone if driver else '98765 11123' }}</strong></div>
+                                <div class="detail-row"><span class="lbl">License:</span> <strong>KA04-2019-8004</strong></div>
+                                <div class="detail-row"><span class="lbl">Experience:</span> <strong>8 Years</strong></div>
+                                <div class="detail-row"><span class="lbl">Rating:</span> <strong>★ 4.8 / 5.0</strong></div>
+                                <a href="tel:{{ driver.phone if driver else '9876511123' }}" class="btn-action-full btn-blue-soft mt-3">
+                                    <i class="bi bi-telephone-outbound-fill"></i> Call Driver Now
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: FACULTY DETAILS TAB -->
+                    <div class="tab-panel" id="tab-faculty">
+                        <div class="panel-card max-w-600 center-margin">
+                            <div class="panel-header">
+                                <h2>Faculty Coordinator</h2>
+                            </div>
+                            <div class="person-card-body p-4">
+                                <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80" alt="Faculty" class="person-img lg" onerror="this.src='https://ui-avatars.com/api/?name=Kavya+M&background=2563eb&color=fff'">
+                                <h3>{{ faculty.full_name if faculty else 'Dr. Kavya M.' }}</h3>
+                                <p class="text-muted">Assistant Professor • Dept. of CSE</p>
+                                <hr>
+                                <div class="detail-row"><span class="lbl">Assigned Route:</span> <strong>Bus {{ student.bus_no if student else 4 }} Route</strong></div>
+                                <div class="detail-row"><span class="lbl">Phone:</span> <strong>+91 {{ faculty.phone if faculty else '96325 77890' }}</strong></div>
+                                <div class="detail-row"><span class="lbl">Email:</span> <strong>{{ faculty.email if faculty else 'kavya.m@svit.ac.in' }}</strong></div>
+                                <div class="flex-row-2 mt-4">
+                                    <a href="tel:{{ faculty.phone if faculty else '9632577890' }}" class="btn-action-half btn-green-soft"><i class="bi bi-telephone-fill"></i> Call Faculty</a>
+                                    <a href="mailto:{{ faculty.email if faculty else 'kavya.m@svit.ac.in' }}" class="btn-action-half btn-blue-soft"><i class="bi bi-envelope-fill"></i> Send Email</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: FULL ATTENDANCE TAB -->
+                    <div class="tab-panel" id="tab-attendance">
+                        <div class="panel-card">
+                            <div class="panel-header flex-between">
+                                <h2>Attendance Records for {{ student.full_name if student else 'Arjun Kumar' }}</h2>
+                                <span class="badge-pill bg-green">92% Attendance</span>
+                            </div>
+                            <div class="table-responsive p-3">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Day</th>
+                                            <th>Status</th>
+                                            <th>Boarding Time</th>
+                                            <th>Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for att in attendance %}
+                                        <tr>
+                                            <td>{{ att.date }}</td>
+                                            <td>{{ att.day if att.day else 'Wed' }}</td>
+                                            <td>
+                                                <span class="badge-status {% if att.status == 'Present' %}status-present{% else %}status-absent{% endif %}">
+                                                    {{ att.status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ att.boarding_time if att.boarding_time else '07:32 AM' }}</td>
+                                            <td>{{ att.remarks if att.remarks else '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 5: NOTIFICATIONS TAB -->
+                    <div class="tab-panel" id="tab-notifications">
+                        <div class="panel-card max-w-700 center-margin">
+                            <div class="panel-header flex-between">
+                                <h2>Notification Center</h2>
+                                <button class="btn-link" onclick="markAllNotificationsRead()">Mark all as read</button>
+                            </div>
+                            <div class="notifications-list-full p-3">
+                                <div class="notif-card unread">
+                                    <div class="n-icon bg-green"><i class="bi bi-bus-front-fill"></i></div>
+                                    <div class="n-body">
+                                        <h4>Student Boarded Bus {{ student.bus_no if student else 4 }}</h4>
+                                        <p>Arjun Kumar scanned bus pass and boarded Bus {{ student.bus_no if student else 4 }} at Koramangala Stop.</p>
+                                        <span class="n-time">Today, 07:32 AM</span>
+                                    </div>
+                                </div>
+
+                                <div class="notif-card unread">
+                                    <div class="n-icon bg-blue"><i class="bi bi-building-check"></i></div>
+                                    <div class="n-body">
+                                        <h4>Student Reached SVIT Campus</h4>
+                                        <p>Bus {{ student.bus_no if student else 4 }} arrived safely at SVIT College Main Gate.</p>
+                                        <span class="n-time">Today, 08:18 AM</span>
+                                    </div>
+                                </div>
+
+                                <div class="notif-card">
+                                    <div class="n-icon bg-amber"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                                    <div class="n-body">
+                                        <h4>Traffic Delay Alert</h4>
+                                        <p>Bus {{ student.bus_no if student else 4 }} delayed by ~10 mins near Silk Board flyover traffic.</p>
+                                        <span class="n-time">Today, 07:05 AM</span>
+                                    </div>
+                                </div>
+
+                                <div class="notif-card">
+                                    <div class="n-icon bg-purple"><i class="bi bi-calendar-event"></i></div>
+                                    <div class="n-body">
+                                        <h4>Upcoming College Holiday Notice</h4>
+                                        <p>College buses will not operate on Friday due to State Festival Holiday.</p>
+                                        <span class="n-time">Yesterday, 04:30 PM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 6: EMERGENCY CONTACTS TAB -->
+                    <div class="tab-panel" id="tab-emergency">
+                        <div class="panel-card max-w-700 center-margin">
+                            <div class="panel-header">
+                                <h2>Emergency Dispatch Directory</h2>
+                            </div>
+                            <div class="emergency-grid p-4">
+                                <div class="emerg-card lg">
+                                    <div class="e-left">
+                                        <div class="e-icon bg-blue-soft"><i class="bi bi-bus-front-fill"></i></div>
+                                        <div class="e-text">
+                                            <strong>SVIT Transport Office</strong>
+                                            <span>080-23591312 / +91 9845012345</span>
+                                        </div>
+                                    </div>
+                                    <a href="tel:08023591312" class="btn-action-sm btn-blue-soft"><i class="bi bi-telephone-fill"></i> Call Office</a>
+                                </div>
+
+                                <div class="emerg-card lg">
+                                    <div class="e-left">
+                                        <div class="e-icon bg-green-soft"><i class="bi bi-person-badge-fill"></i></div>
+                                        <div class="e-text">
+                                            <strong>Bus Driver ({{ driver.name if driver else 'Ramesh M.' }})</strong>
+                                            <span>+91 {{ driver.phone if driver else '98765 11123' }}</span>
+                                        </div>
+                                    </div>
+                                    <a href="tel:{{ driver.phone if driver else '9876511123' }}" class="btn-action-sm btn-green-soft"><i class="bi bi-telephone-fill"></i> Call Driver</a>
+                                </div>
+
+                                <div class="emerg-card lg">
+                                    <div class="e-left">
+                                        <div class="e-icon bg-red-soft"><i class="bi bi-shield-shaded"></i></div>
+                                        <div class="e-text">
+                                            <strong>Police Control Room</strong>
+                                            <span>Emergency Helpline 112 / 100</span>
+                                        </div>
+                                    </div>
+                                    <a href="tel:112" class="btn-action-sm btn-red-soft"><i class="bi bi-telephone-fill"></i> Call 112</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 7: SETTINGS TAB -->
+                    <div class="tab-panel" id="tab-settings">
+                        <div class="panel-card max-w-600 center-margin">
+                            <div class="panel-header">
+                                <h2>Account & Dashboard Settings</h2>
+                            </div>
+                            <div class="settings-body p-4">
+                                <div class="setting-item flex-between">
+                                    <div>
+                                        <strong>Language Preference</strong>
+                                        <p class="text-muted">Choose your preferred language for the Parent Portal</p>
+                                    </div>
+                                    <select class="form-select-sm" onchange="changeLanguage(this.value)">
+                                        <option value="en">English</option>
+                                        <option value="kn">ಕನ್ನಡ</option>
+                                        <option value="hi">हिन्दी</option>
+                                        <option value="te">తెలుగు</option>
+                                    </select>
+                                </div>
+
+                                <hr>
+
+                                <div class="setting-item flex-between">
+                                    <div>
+                                        <strong>Theme Mode</strong>
+                                        <p class="text-muted">Switch between light mode and dark mode</p>
+                                    </div>
+                                    <button class="btn-secondary-sm" onclick="toggleTheme()">Toggle Theme</button>
+                                </div>
+
+                                <hr>
+
+                                <div class="setting-item flex-between">
+                                    <div>
+                                        <strong>Security & Password</strong>
+                                        <p class="text-muted">Update your account password</p>
+                                    </div>
+                                    <button class="btn-primary-sm" onclick="openChangePasswordModal()">Change Password</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="parent-footer">
+                <span>&copy; 2025 SVIT Smart Bus Tracker. All rights reserved.</span>
+                <span>Version 1.0.0</span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Parent Profile Modal -->
+    <div class="modal-overlay" id="profile-modal">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeProfileModal()">&times;</button>
+            <div class="modal-header-box">
+                <i class="bi bi-person-circle modal-icon-blue"></i>
+                <h3>Parent Profile Details</h3>
+            </div>
+            <div class="account-details-body mt-3">
+                <div class="detail-row">
+                    <span class="detail-label">Parent Name:</span>
+                    <strong class="detail-val">{{ user.name if user else 'Priya Sharma' }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email Address:</span>
+                    <strong class="detail-val">{{ user.email if user else 'priya.sharma@gmail.com' }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Mobile Number:</span>
+                    <strong class="detail-val">+91 98765 43210</strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Linked Student:</span>
+                    <strong class="detail-val text-blue">{{ student.full_name if student else 'Arjun Kumar' }} ({{ student.usn if student else '1SV22CS015' }})</strong>
+                </div>
+            </div>
+            <div class="modal-footer-btns mt-4">
+                <button class="btn-secondary" onclick="closeProfileModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="change-password-modal">
+        <div class="modal-card">
+            <button class="modal-close-btn" onclick="closeChangePasswordModal()">&times;</button>
+            <div class="modal-header-box">
+                <i class="bi bi-shield-lock-fill modal-icon-blue"></i>
+                <h3>Change Password</h3>
+            </div>
+            <form id="change-password-form" onsubmit="savePasswordChange(event)" class="mt-3">
+                <div class="form-group">
+                    <label class="form-label">Current Password <span class="text-red">*</span></label>
+                    <input type="password" id="curr-password" class="form-control" placeholder="Enter current password" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password <span class="text-red">*</span></label>
+                    <input type="password" id="new-password" class="form-control" placeholder="Min 6 characters e.g. arjun1000" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm New Password <span class="text-red">*</span></label>
+                    <input type="password" id="confirm-password" class="form-control" placeholder="Re-type new password" required>
+                </div>
+                <div class="modal-footer-btns mt-4">
+                    <button type="button" class="btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inject Server Data as JSON -->
+    <script>
+        const PARENT_STUDENT_DATA = JSON.parse('{{ { "name": (student.full_name if student else "Arjun Kumar"), "usn": (student.usn if student else "1SV22CS015"), "bus_no": (student.bus_no if student else 4), "route_name": (student.route_name if student else "Bus 4 Route") } | tojson | safe }}');
+        const PARENT_BUS_DATA = JSON.parse('{{ { "bus_no": (bus.bus_no if bus else 4), "lat": (bus.lat if bus and bus.lat else 13.0420), "lng": (bus.lng if bus and bus.lng else 77.6200), "status": (bus.status if bus and bus.status else "On Route") } | tojson | safe }}');
+    </script>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/translations.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/parent.js') }}"></script>
+</body>
+</html>

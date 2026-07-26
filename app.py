@@ -128,6 +128,8 @@ def login():
         target_url = url_for('admin_dashboard')
     elif user_role == 'student':
         target_url = url_for('student_dashboard')
+    elif user_role == 'parent':
+        target_url = url_for('parent_dashboard')
     elif user_role == 'driver':
         target_url = url_for('driver_dashboard')
     elif user_role == 'scanner':
@@ -150,6 +152,119 @@ def admin_dashboard():
         return redirect(url_for('index', role='admin'))
 
     return render_template('admin.html', user=user)
+
+@app.route('/parent')
+@app.route('/parent/dashboard')
+def parent_dashboard():
+    user = session.get('user')
+    if not user or user.get('role') != 'parent':
+        return redirect(url_for('index', role='parent'))
+
+    conn = get_db_connection()
+
+    parent_usn = user.get('usn', '')
+    parent_email = user.get('email', '')
+    
+    student = None
+    if parent_usn:
+        student = conn.execute("SELECT * FROM students WHERE LOWER(usn) = ?", (parent_usn.lower(),)).fetchone()
+    
+    if not student and 'gmail' in parent_email.lower():
+        student = conn.execute("SELECT * FROM students WHERE LOWER(email) = 'arjun@saividya.ac.in' OR usn = '1VA21CS010'").fetchone()
+
+    if not student:
+        student = conn.execute("SELECT * FROM students ORDER BY id ASC LIMIT 1").fetchone()
+
+    student_dict = dict(student)
+
+    # Assigned bus for this child ONLY
+    bus = conn.execute("SELECT * FROM buses WHERE bus_no = ?", (student_dict['bus_no'],)).fetchone()
+    bus_dict = dict(bus) if bus else {
+        'bus_no': student_dict['bus_no'],
+        'driver_name': 'Ramesh M.',
+        'driver_phone': '9876511123',
+        'status': 'On Route',
+        'lat': 13.0420,
+        'lng': 77.6200
+    }
+
+    # Route info for child
+    route = conn.execute("SELECT * FROM routes WHERE bus_no = ?", (student_dict['bus_no'],)).fetchone()
+    route_dict = dict(route) if route else {}
+    if route_dict and 'stops_json' in route_dict:
+        import json
+        try:
+            route_dict['stops'] = json.loads(route_dict['stops_json'])
+        except:
+            route_dict['stops'] = []
+
+    # Driver info
+    driver = conn.execute("SELECT * FROM drivers WHERE assigned_bus = ?", (student_dict['bus_no'],)).fetchone()
+    driver_dict = dict(driver) if driver else {
+        'name': bus_dict.get('driver_name', 'Ramesh M.'),
+        'phone': bus_dict.get('driver_phone', '98765 11123'),
+        'assigned_bus': student_dict['bus_no'],
+        'experience_yrs': 8,
+        'rating': '4.8 (128)'
+    }
+
+    # Faculty coordinator info
+    faculty = conn.execute("""
+        SELECT u.* FROM users u 
+        WHERE u.role = 'faculty' ORDER BY u.id ASC LIMIT 1
+    """).fetchone()
+    
+    faculty_dict = dict(faculty) if faculty else {
+        'full_name': 'Dr. Kavya M.',
+        'email': 'kavya.m@svit.ac.in',
+        'phone': '96325 77890',
+        'title': 'Assistant Professor',
+        'department': 'Dept. of CSE'
+    }
+
+    # Attendance records
+    attendance_records = conn.execute("""
+        SELECT * FROM attendance WHERE student_id = ? ORDER BY id DESC LIMIT 15
+    """, (student_dict['id'],)).fetchall()
+    
+    attendance_list = [dict(a) for a in attendance_records]
+    
+    days_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    for i in range(1, 10):
+        d = (datetime.now() - timedelta(days=i))
+        d_str = d.strftime('%d %b %Y')
+        day_name = days_names[d.weekday() % 5]
+        st = 'Present' if (i % 5 != 0) else 'Absent'
+        attendance_list.append({
+            'id': 200 + i,
+            'student_id': student_dict['id'],
+            'bus_no': student_dict['bus_no'],
+            'date': d_str,
+            'day': day_name,
+            'status': st,
+            'boarding_time': '07:32 AM' if st == 'Present' else '-',
+            'remarks': '-' if st == 'Present' else 'Sick Leave'
+        })
+
+    conn.close()
+
+    notifications = [
+        {"id": 1, "title": f"Student boarded the bus (Bus {student_dict['bus_no']})", "time": "07:32 AM", "status": "read", "icon": "bi-bus-front-fill", "badge": "success"},
+        {"id": 2, "title": "Student reached college", "time": "08:18 AM", "status": "read", "icon": "bi-building-check", "badge": "info"},
+        {"id": 3, "title": "Student left college", "time": "04:45 PM", "status": "unread", "icon": "bi-box-arrow-right", "badge": "purple"},
+        {"id": 4, "title": "Student reached home stop", "time": "05:30 PM", "status": "unread", "icon": "bi-house-check-fill", "badge": "success"},
+        {"id": 5, "title": "Bus delayed by 10 minutes", "time": "07:05 AM", "status": "unread", "icon": "bi-exclamation-triangle-fill", "badge": "warning"}
+    ]
+
+    return render_template('parent.html', 
+                           user=user, 
+                           student=student_dict, 
+                           bus=bus_dict, 
+                           route=route_dict, 
+                           driver=driver_dict, 
+                           faculty=faculty_dict, 
+                           attendance=attendance_list, 
+                           notifications=notifications)
 
 @app.route('/student')
 @app.route('/student/dashboard')
@@ -929,13 +1044,23 @@ def register_user():
         VALUES (?, ?, ?, ?, ?, ?)
         ''', (full_name, email, role, phone, usn, password))
         
-        # If user is a student, also create student table record with assigned bus
+        # If user is a student, also create student table record with assigned bus AND auto-create parent account
         if role == 'student':
+            std_usn = usn if usn else f'1VA21CS{random.randint(100, 999)}'
             route_name = f'Bus {bus_no} Route'
             conn.execute('''
             INSERT INTO students (full_name, usn, email, phone, parent_contact, bus_no, route_name, stop_name, attendance_pct, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 85, 'Present')
-            ''', (full_name, usn if usn else f'1VA21CS{random.randint(100, 999)}', email, phone, phone, bus_no, route_name, 'Boarding Stop'))
+            ''', (full_name, std_usn, email, phone, phone, bus_no, route_name, 'Boarding Stop'))
+
+            # Auto-create corresponding parent account
+            parent_email = f"parent_{std_usn.lower()}@gmail.com"
+            first_name_lower = full_name.split()[0].lower()
+            parent_pass = f"{first_name_lower}1000"
+            conn.execute('''
+            INSERT OR IGNORE INTO users (full_name, email, role, phone, usn, password)
+            VALUES (?, ?, 'parent', ?, ?, ?)
+            ''', (f"Parent of {full_name}", parent_email, phone, std_usn, parent_pass))
 
         # If user is a driver, also insert driver record with assigned bus
         elif role == 'driver':

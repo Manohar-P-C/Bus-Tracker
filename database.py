@@ -133,6 +133,29 @@ def init_db():
     if arjun_std:
         cursor.execute("UPDATE students SET bus_no = 9, usn = '1VA21CS010' WHERE id = ?", (arjun_std[0],))
 
+    # Ensure parent@gmail.com exists and is linked to USN 1VA21CS010
+    cursor.execute("SELECT id FROM users WHERE LOWER(email) = 'parent@gmail.com'")
+    if not cursor.fetchone():
+        cursor.execute("""
+            INSERT INTO users (full_name, email, role, phone, usn, password)
+            VALUES ('Priya Sharma', 'parent@gmail.com', 'parent', '9876543210', '1VA21CS010', 'arjun1000')
+        """)
+    else:
+        cursor.execute("UPDATE users SET usn = '1VA21CS010', password = 'arjun1000' WHERE LOWER(email) = 'parent@gmail.com'")
+
+    # Ensure all parent users have usn set if missing
+    parents_without_usn = cursor.execute("SELECT id, email FROM users WHERE role = 'parent' AND (usn IS NULL OR usn = '')").fetchall()
+    for p in parents_without_usn:
+        p_id = p[0]
+        p_email = p[1]
+        import re
+        m = re.search(r'parent(\d+)', p_email)
+        if m:
+            s_num = int(m.group(1))
+            st = cursor.execute("SELECT usn FROM students WHERE id = ?", (s_num,)).fetchone()
+            if st:
+                cursor.execute("UPDATE users SET usn = ? WHERE id = ?", (st[0], p_id))
+
     conn.commit()
     conn.close()
 
@@ -399,10 +422,13 @@ def seed_data(cursor):
             VALUES (?, ?, 'student', ?, ?, ?)
             ''', (name, email, phone, usn, student_password))
 
+            parent_email = "parent@gmail.com" if student_counter == 81 else f"parent{student_counter}@saividya.ac.in"
+            parent_name = "Priya Sharma" if student_counter == 81 else f"Parent of {name}"
+
             cursor.execute('''
-            INSERT INTO users (full_name, email, role, phone, password)
-            VALUES (?, ?, 'parent', ?, 'parent123')
-            ''', (f"Parent of {name}", f"parent{student_counter}@saividya.ac.in", parent_phone))
+            INSERT INTO users (full_name, email, role, phone, usn, password)
+            VALUES (?, ?, 'parent', ?, ?, ?)
+            ''', (parent_name, parent_email, parent_phone, usn, student_password))
 
             # Insert attendance record
             cursor.execute('''

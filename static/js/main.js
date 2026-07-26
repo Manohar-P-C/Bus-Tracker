@@ -33,8 +33,8 @@ const ROLE_DETAILS = {
     },
     parent: {
         name: 'Parent / Guardian',
-        placeholder: 'parent@saividya.ac.in',
-        hint: 'Access child bus boarding status, live GPS & ETA notifications',
+        placeholder: 'parent@gmail.com',
+        hint: 'Access child bus boarding status, live GPS & ETA notifications (Pass: arjun1000)',
         badge: 'Parent'
     }
 };
