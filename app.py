@@ -835,6 +835,108 @@ def get_driver_attendance_today():
         'total_students': total_students
     })
 
+# ----------------- LIVE GPS TRACKING & TRACCAR CLIENT INTEGRATION -----------------
+
+@app.route('/api/gps/traccar', methods=['GET', 'POST'])
+def traccar_gps_receiver():
+    """
+    OsmAnd Protocol Endpoint for Traccar Client Android/iOS App.
+    Config in Traccar Client App:
+      - Server URL: http://<YOUR_SERVER_IP>:5000/api/gps/traccar
+      - Device ID: e.g. "1" or "bus1" or "bus_1"
+    """
+    if request.method == 'POST':
+        data = request.json if request.is_json else request.form.to_dict()
+        if not data:
+            data = request.args.to_dict()
+    else:
+        data = request.args.to_dict()
+
+    device_id = str(data.get('id') or data.get('deviceid') or '').strip().lower()
+    raw_lat = data.get('lat') or data.get('latitude')
+    raw_lng = data.get('lon') or data.get('lng') or data.get('longitude')
+    raw_speed = data.get('speed') # Traccar sends speed in knots (1 knot = 1.852 km/h)
+    raw_bearing = data.get('bearing') or data.get('heading') or 0
+
+    if not device_id or raw_lat is None or raw_lng is None:
+        return 'OK', 200
+
+    import re
+    digits = re.findall(r'\d+', device_id)
+    bus_no = int(digits[0]) if digits else 1
+
+    try:
+        lat = float(raw_lat)
+        lng = float(raw_lng)
+        speed = round(float(raw_speed) * 1.852, 1) if raw_speed is not None else 0.0
+        heading = float(raw_bearing) if raw_bearing is not None else 0.0
+    except (ValueError, TypeError):
+        return 'OK', 200
+
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    conn = get_db_connection()
+    conn.execute("""
+        UPDATE buses 
+        SET lat = ?, lng = ?, speed = ?, heading = ?, status = 'On Route', last_updated = ?
+        WHERE bus_no = ?
+    """, (lat, lng, speed, heading, now_str, bus_no))
+    conn.commit()
+    conn.close()
+
+    return 'OK', 200
+
+@app.route('/api/gps/update', methods=['POST'])
+def update_gps_location():
+    """
+    JSON API for custom web trackers or smartphone HTML5 geolocation.
+    Payload: { "bus_no": 4, "lat": 12.935, "lng": 77.624, "speed": 32.5, "heading": 180 }
+    """
+    data = request.get_json() or {}
+    bus_no = data.get('bus_no')
+    lat = data.get('lat')
+    lng = data.get('lng')
+    speed = data.get('speed', 0)
+    heading = data.get('heading', 0)
+
+    if not bus_no or lat is None or lng is None:
+        return jsonify({'success': False, 'message': 'bus_no, lat, and lng are required.'}), 400
+
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    conn = get_db_connection()
+    conn.execute("""
+        UPDATE buses 
+        SET lat = ?, lng = ?, speed = ?, heading = ?, status = 'On Route', last_updated = ?
+        WHERE bus_no = ?
+    """, (lat, lng, speed, heading, now_str, bus_no))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': f'GPS location updated for Bus {bus_no}!', 'last_updated': now_str})
+
+@app.route('/api/buses/locations', methods=['GET'])
+def get_buses_locations():
+    """
+    Returns live location, speed, heading, and status of all buses for frontend Leaflet maps.
+    """
+    conn = get_db_connection()
+    buses = conn.execute("SELECT bus_no, reg_no, driver_name, driver_phone, route_name, status, lat, lng, speed, heading, last_updated FROM buses ORDER BY bus_no ASC").fetchall()
+    conn.close()
+    return jsonify([dict(b) for b in buses])
+
+@app.route('/api/bus/<int:bus_no>/location', methods=['GET'])
+def get_single_bus_location(bus_no):
+    """
+    Returns live location of a specific bus.
+    """
+    conn = get_db_connection()
+    bus = conn.execute("SELECT bus_no, reg_no, driver_name, driver_phone, route_name, status, lat, lng, speed, heading, last_updated FROM buses WHERE bus_no = ?", (bus_no,)).fetchone()
+    conn.close()
+    if not bus:
+        return jsonify({'success': False, 'message': f'Bus {bus_no} not found.'}), 404
+    return jsonify(dict(bus))
+
 # ----------------- ADMIN API ENDPOINTS -----------------
 
 @app.route('/api/stats', methods=['GET'])

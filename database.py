@@ -109,6 +109,17 @@ def init_db():
     ''')
     conn.commit()
 
+    # Safely alter table buses to add speed, heading, last_updated if missing
+    cursor.execute("PRAGMA table_info(buses)")
+    cols = [row[1] for row in cursor.fetchall()]
+    if 'speed' not in cols:
+        cursor.execute("ALTER TABLE buses ADD COLUMN speed REAL DEFAULT 0")
+    if 'heading' not in cols:
+        cursor.execute("ALTER TABLE buses ADD COLUMN heading REAL DEFAULT 0")
+    if 'last_updated' not in cols:
+        cursor.execute("ALTER TABLE buses ADD COLUMN last_updated TEXT")
+    conn.commit()
+
     # Seed initial data if empty
     cursor.execute("SELECT COUNT(*) FROM users")
     user_count = cursor.fetchone()[0]
