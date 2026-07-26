@@ -146,8 +146,8 @@
                     <!-- Parent Profile Dropdown -->
                     <div class="account-dropdown-wrapper">
                         <button class="account-btn" onclick="toggleAccountDropdown()">
-                            <div class="account-avatar">
-                                <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80" alt="Parent Avatar" class="avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=Priya+Sharma&background=2563eb&color=fff'">
+                            <div class="account-avatar-icon">
+                                <i class="bi bi-person-fill"></i>
                             </div>
                             <div class="account-info-text">
                                 <span class="account-name">{{ user.name if user and user.name != 'Parent / Guardian' else 'Priya Sharma' }}</span>
@@ -188,8 +188,8 @@
                 <!-- TOP PROFILE CARD (Student & Parent Details Banner) -->
                 <section class="student-profile-banner" id="student-profile-card">
                     <div class="profile-left">
-                        <div class="student-photo-wrapper">
-                            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80" alt="Student Photo" class="student-photo" onerror="this.src='https://ui-avatars.com/api/?name={{ student.full_name | replace(' ', '+') }}&background=2563eb&color=fff'">
+                        <div class="student-avatar-icon">
+                            <i class="bi bi-mortarboard-fill"></i>
                         </div>
                         <div class="student-main-meta">
                             <h2 class="s-name">{{ student.full_name if student else 'Arjun Kumar' }}</h2>
@@ -457,8 +457,8 @@
                                         <h3>Driver Details</h3>
                                     </div>
                                     <div class="person-card-body">
-                                        <div class="person-avatar-col">
-                                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="Driver" class="person-img" onerror="this.src='https://ui-avatars.com/api/?name=Ramesh+M&background=2563eb&color=fff'">
+                                        <div class="person-icon-box bg-blue-soft">
+                                            <i class="bi bi-person-badge-fill"></i>
                                         </div>
                                         <div class="person-info-col">
                                             <div class="person-name-row">
@@ -482,8 +482,8 @@
                                         <h3>Faculty Incharge</h3>
                                     </div>
                                     <div class="person-card-body">
-                                        <div class="person-avatar-col">
-                                            <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=120&auto=format&fit=crop&q=80" alt="Faculty" class="person-img" onerror="this.src='https://ui-avatars.com/api/?name=Kavya+M&background=2563eb&color=fff'">
+                                        <div class="person-icon-box bg-purple-soft">
+                                            <i class="bi bi-mortarboard-fill"></i>
                                         </div>
                                         <div class="person-info-col">
                                             <h4>{{ faculty.full_name if faculty else 'Dr. Kavya M.' }}</h4>
@@ -651,8 +651,10 @@
                             <div class="panel-header">
                                 <h2>Assigned Bus Driver</h2>
                             </div>
-                            <div class="person-card-body p-4">
-                                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80" alt="Driver" class="person-img lg" onerror="this.src='https://ui-avatars.com/api/?name=Ramesh+M&background=2563eb&color=fff'">
+                            <div class="person-card-body p-4 text-center-col">
+                                <div class="person-icon-lg bg-blue-soft mb-3">
+                                    <i class="bi bi-truck-front-fill"></i>
+                                </div>
                                 <h3>{{ driver.name if driver else 'Ramesh M.' }}</h3>
                                 <p class="text-muted">Assigned Driver for Bus {{ student.bus_no if student else 4 }}</p>
                                 <hr>
@@ -673,8 +675,10 @@
                             <div class="panel-header">
                                 <h2>Faculty Coordinator</h2>
                             </div>
-                            <div class="person-card-body p-4">
-                                <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80" alt="Faculty" class="person-img lg" onerror="this.src='https://ui-avatars.com/api/?name=Kavya+M&background=2563eb&color=fff'">
+                            <div class="person-card-body p-4 text-center-col">
+                                <div class="person-icon-lg bg-purple-soft mb-3">
+                                    <i class="bi bi-mortarboard-fill"></i>
+                                </div>
                                 <h3>{{ faculty.full_name if faculty else 'Dr. Kavya M.' }}</h3>
                                 <p class="text-muted">Assistant Professor • Dept. of CSE</p>
                                 <hr>
